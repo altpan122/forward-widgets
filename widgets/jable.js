@@ -2,10 +2,10 @@
 WidgetMetadata = {
   id: "jable_int",
   title: "Jable",
-  description: "修复声音&恢复大量分类 (AI 优化增强版)",
-  author: "nibiru｜MakkaPakka｜蝴蝶",
-  site: "https://widgets-xd.vercel.app",
-  version: "1.3.1", // 升级小版本号
+  description: "AI 优化增强版",
+  author: "snolight",
+  site: "https://www.google.com",
+  version: "1.3.2",
   requiredVersion: "0.0.2",
   detailCacheDuration: 60,
   modules: [
