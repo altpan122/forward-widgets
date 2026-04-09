@@ -1,242 +1,700 @@
+// Original Structure: nibiru / jable_int
+// Adapted for hanime1.me by: AI
 WidgetMetadata = {
-    id: "hanime1_me_module",
-    title: "Hanime1",
-    author: "AI Assistant",
-    description: "Hanime1 动漫智能抓取模块 (WebView防屏蔽)",
-    version: "1.0.0",
-    requiredVersion: "0.0.2",
-    site: "https://hanime1.me",
-    detailCacheDuration: 60,
-    modules: [
+  id: "hanime1_int",
+  title: "Hanime1",
+  description: "Hanime1.me 动漫浏览模块",
+  author: "AI",
+  site: "https://hanime1.me",
+  version: "1.0.0",
+  requiredVersion: "0.0.2",
+  detailCacheDuration: 60,
+  modules: [
+    // 搜索模块
+    {
+      title: "搜索",
+      description: "搜索动漫",
+      requiresWebView: false,
+      functionName: "search",
+      cacheDuration: 3600,
+      params: [
         {
-            title: "🔍 搜索",
-            description: "搜索动漫视频",
-            requiresWebView: true,
-            functionName: "searchList",
-            params: [
-                { name: "keyword", title: "关键词", type: "input", value: "" },
-                { name: "page", title: "页码", type: "page", value: "1" }
-            ]
+          name: "keyword",
+          title: "关键词",
+          type: "input",
+          description: "关键词",
         },
         {
-            title: "🆕 最新上市",
-            description: "最新更新的影片",
-            requiresWebView: true,
-            functionName: "loadList",
-            params: [
-                { name: "url", type: "constant", value: "https://hanime1.me/search?query=&sort=最新上市" },
-                { name: "page", title: "页码", type: "page", value: "1" }
-            ]
+          name: "sort_by",
+          title: "排序",
+          type: "enumeration",
+          description: "排序",
+          enumOptions: [
+            { title: "最新发布", value: "released_at_unix" },
+            { title: "最多观看", value: "views" },
+            { title: "最多喜欢", value: "likes" },
+            { title: "标题", value: "title_sortable" },
+          ],
         },
         {
-            title: "🔥 近期最佳",
-            description: "近期高分佳作",
-            requiresWebView: true,
-            functionName: "loadList",
-            params: [
-                { name: "url", type: "constant", value: "https://hanime1.me/search?query=&sort=近期最佳" },
-                { name: "page", title: "页码", type: "page", value: "1" }
-            ]
+          name: "ordering",
+          title: "升降序",
+          type: "enumeration",
+          description: "排列顺序",
+          enumOptions: [
+            { title: "降序", value: "desc" },
+            { title: "升序", value: "asc" },
+          ],
+          value: "desc",
+        },
+        { name: "from", title: "页码", type: "page", description: "页码", value: "1" },
+      ],
+    },
+    // 最新模块
+    {
+      title: "最新",
+      description: "最新上架动漫",
+      requiresWebView: false,
+      functionName: "loadPage",
+      cacheDuration: 3600,
+      params: [
+        {
+          name: "url",
+          title: "列表地址",
+          type: "constant",
+          description: "列表地址",
+          value: "https://hanime1.me/search?",
         },
         {
-            title: "👀 最多观看",
-            description: "历史最高播放",
-            requiresWebView: true,
-            functionName: "loadList",
-            params: [
-                { name: "url", type: "constant", value: "https://hanime1.me/search?query=&sort=最多觀看" },
-                { name: "page", title: "页码", type: "page", value: "1" }
-            ]
+          name: "sort_by",
+          title: "排序",
+          type: "enumeration",
+          description: "排序",
+          enumOptions: [
+            { title: "最新发布", value: "released_at_unix" },
+            { title: "最多观看", value: "views" },
+            { title: "最多喜欢", value: "likes" },
+          ],
+        },
+        { name: "from", title: "页码", type: "page", description: "页码", value: "1" },
+      ],
+    },
+    // 标签模块 - 剧情
+    {
+      title: "剧情",
+      description: "按剧情标签浏览",
+      requiresWebView: false,
+      functionName: "loadPage",
+      cacheDuration: 3600,
+      params: [
+        {
+          name: "url",
+          title: "选择剧情",
+          type: "enumeration",
+          belongTo: {
+            paramName: "sort_by",
+            value: ["released_at_unix", "views", "likes"],
+          },
+          enumOptions: [
+            {
+              title: "NTR",
+              value: "https://hanime1.me/search?tags%5B%5D=NTR",
+            },
+            {
+              title: "乱伦",
+              value: "https://hanime1.me/search?tags%5B%5D=Incest",
+            },
+            {
+              title: "催眠",
+              value: "https://hanime1.me/search?tags%5B%5D=Mind+Control",
+            },
+            {
+              title: "触手",
+              value: "https://hanime1.me/search?tags%5B%5D=Tentacle",
+            },
+            {
+              title: "强奸",
+              value: "https://hanime1.me/search?tags%5B%5D=Rape",
+            },
+            {
+              title: "逆强奸",
+              value: "https://hanime1.me/search?tags%5B%5D=Reverse+Rape",
+            },
+            {
+              title: "剧情向",
+              value: "https://hanime1.me/search?tags%5B%5D=Plot",
+            },
+            {
+              title: "幻想",
+              value: "https://hanime1.me/search?tags%5B%5D=Fantasy",
+            },
+            {
+              title: "恐怖",
+              value: "https://hanime1.me/search?tags%5B%5D=Horror",
+            },
+            {
+              title: "轻松向",
+              value: "https://hanime1.me/search?tags%5B%5D=Vanilla",
+            },
+            {
+              title: "怀孕",
+              value: "https://hanime1.me/search?tags%5B%5D=Pregnant",
+            },
+            {
+              title: "丑男",
+              value: "https://hanime1.me/search?tags%5B%5D=Ugly+Bastard",
+            },
+          ],
+          value: "https://hanime1.me/search?tags%5B%5D=NTR",
         },
         {
-            title: "🏷️ 分类探索",
-            description: "按标签分类浏览",
-            requiresWebView: true,
-            functionName: "loadList",
-            params: [
-                { 
-                    name: "url", 
-                    title: "选择分类", 
-                    type: "enumeration", 
-                    value: "https://hanime1.me/search?query=&genre=3D",
-                    enumOptions: [
-                        { title: "3D 动画", value: "https://hanime1.me/search?query=&genre=3D" },
-                        { title: "無碼 (步兵)", value: "https://hanime1.me/search?query=&genre=無碼" },
-                        { title: "同人作品", value: "https://hanime1.me/search?query=&genre=同人" },
-                        { title: "巨乳", value: "https://hanime1.me/search?query=&genre=巨乳" },
-                        { title: "蘿莉", value: "https://hanime1.me/search?query=&genre=蘿莉" },
-                        { title: "純愛", value: "https://hanime1.me/search?query=&genre=純愛" },
-                        { title: "NTR", value: "https://hanime1.me/search?query=&genre=NTR" },
-                        { title: "人妻", value: "https://hanime1.me/search?query=&genre=人妻" },
-                        { title: "調教", value: "https://hanime1.me/search?query=&genre=調教" },
-                        { title: "百合", value: "https://hanime1.me/search?query=&genre=百合" }
-                    ] 
-                },
-                { name: "page", title: "页码", type: "page", value: "1" }
-            ]
-        }
-    ]
+          name: "sort_by",
+          title: "排序",
+          type: "enumeration",
+          description: "排序",
+          enumOptions: [
+            { title: "最新发布", value: "released_at_unix" },
+            { title: "最多观看", value: "views" },
+            { title: "最多喜欢", value: "likes" },
+          ],
+        },
+        { name: "from", title: "页码", type: "page", description: "页码", value: "1" },
+      ],
+    },
+    // 标签模块 - 角色
+    {
+      title: "角色",
+      description: "按角色标签浏览",
+      requiresWebView: false,
+      functionName: "loadPage",
+      cacheDuration: 3600,
+      params: [
+        {
+          name: "url",
+          title: "选择角色",
+          type: "enumeration",
+          belongTo: {
+            paramName: "sort_by",
+            value: ["released_at_unix", "views", "likes"],
+          },
+          enumOptions: [
+            {
+              title: "女学生",
+              value: "https://hanime1.me/search?tags%5B%5D=School+Girl",
+            },
+            {
+              title: "护士",
+              value: "https://hanime1.me/search?tags%5B%5D=Nurse",
+            },
+            {
+              title: "老师",
+              value: "https://hanime1.me/search?tags%5B%5D=Teacher",
+            },
+            {
+              title: "女仆",
+              value: "https://hanime1.me/search?tags%5B%5D=Maid",
+            },
+            {
+              title: "熟女",
+              value: "https://hanime1.me/search?tags%5B%5D=Milf",
+            },
+            {
+              title: "猫耳娘",
+              value: "https://hanime1.me/search?tags%5B%5D=Nekomimi",
+            },
+            {
+              title: "扶她",
+              value: "https://hanime1.me/search?tags%5B%5D=Futanari",
+            },
+            {
+              title: "后宫",
+              value: "https://hanime1.me/search?tags%5B%5D=Harem",
+            },
+            {
+              title: "萝莉",
+              value: "https://hanime1.me/search?tags%5B%5D=Loli",
+            },
+            {
+              title: "竖马",
+              value: "https://hanime1.me/search?tags%5B%5D=Shota",
+            },
+            {
+              title: "人妻",
+              value: "https://hanime1.me/search?tags%5B%5D=Wife",
+            },
+            {
+              title: "黑皮",
+              value: "https://hanime1.me/search?tags%5B%5D=Dark+Skin",
+            },
+          ],
+          value: "https://hanime1.me/search?tags%5B%5D=School+Girl",
+        },
+        {
+          name: "sort_by",
+          title: "排序",
+          type: "enumeration",
+          description: "排序",
+          enumOptions: [
+            { title: "最新发布", value: "released_at_unix" },
+            { title: "最多观看", value: "views" },
+            { title: "最多喜欢", value: "likes" },
+          ],
+        },
+        { name: "from", title: "页码", type: "page", description: "页码", value: "1" },
+      ],
+    },
+    // 标签模块 - 交合
+    {
+      title: "交合",
+      description: "按交合标签浏览",
+      requiresWebView: false,
+      functionName: "loadPage",
+      cacheDuration: 3600,
+      params: [
+        {
+          name: "url",
+          title: "选择交合",
+          type: "enumeration",
+          belongTo: {
+            paramName: "sort_by",
+            value: ["released_at_unix", "views", "likes"],
+          },
+          enumOptions: [
+            {
+              title: "口交",
+              value: "https://hanime1.me/search?tags%5B%5D=Blow+Job",
+            },
+            {
+              title: "颜射",
+              value: "https://hanime1.me/search?tags%5B%5D=Facial",
+            },
+            {
+              title: "中出",
+              value: "https://hanime1.me/search?tags%5B%5D=Creampie",
+            },
+            {
+              title: "足交",
+              value: "https://hanime1.me/search?tags%5B%5D=Foot+Job",
+            },
+            {
+              title: "乳交",
+              value: "https://hanime1.me/search?tags%5B%5D=BoobJob",
+            },
+            {
+              title: "手交",
+              value: "https://hanime1.me/search?tags%5B%5D=Hand+Job",
+            },
+            {
+              title: "肛交",
+              value: "https://hanime1.me/search?tags%5B%5D=Anal",
+            },
+            {
+              title: "潮吹",
+              value: "https://hanime1.me/search?tags%5B%5D=Squirting",
+            },
+            {
+              title: "3P",
+              value: "https://hanime1.me/search?tags%5B%5D=Threesome",
+            },
+            {
+              title: "乱交",
+              value: "https://hanime1.me/search?tags%5B%5D=Orgy",
+            },
+            {
+              title: "痉挛",
+              value: "https://hanime1.me/search?tags%5B%5D=Ahegao",
+            },
+            {
+              title: "母乳",
+              value: "https://hanime1.me/search?tags%5B%5D=Lactation",
+            },
+          ],
+          value: "https://hanime1.me/search?tags%5B%5D=Blow+Job",
+        },
+        {
+          name: "sort_by",
+          title: "排序",
+          type: "enumeration",
+          description: "排序",
+          enumOptions: [
+            { title: "最新发布", value: "released_at_unix" },
+            { title: "最多观看", value: "views" },
+            { title: "最多喜欢", value: "likes" },
+          ],
+        },
+        { name: "from", title: "页码", type: "page", description: "页码", value: "1" },
+      ],
+    },
+    // 标签模块 - 玩法
+    {
+      title: "玩法",
+      description: "按玩法标签浏览",
+      requiresWebView: false,
+      functionName: "loadPage",
+      cacheDuration: 3600,
+      params: [
+        {
+          name: "url",
+          title: "选择玩法",
+          type: "enumeration",
+          belongTo: {
+            paramName: "sort_by",
+            value: ["released_at_unix", "views", "likes"],
+          },
+          enumOptions: [
+            {
+              title: "BDSM",
+              value: "https://hanime1.me/search?tags%5B%5D=BDSM",
+            },
+            {
+              title: "捆绑",
+              value: "https://hanime1.me/search?tags%5B%5D=Bondage",
+            },
+            {
+              title: "玩具",
+              value: "https://hanime1.me/search?tags%5B%5D=Toys",
+            },
+            {
+              title: "公开",
+              value: "https://hanime1.me/search?tags%5B%5D=Public+Sex",
+            },
+            {
+              title: "自慰",
+              value: "https://hanime1.me/search?tags%5B%5D=Masturbation",
+            },
+            {
+              title: "3D",
+              value: "https://hanime1.me/search?tags%5B%5D=3D",
+            },
+            {
+              title: "Cosplay",
+              value: "https://hanime1.me/search?tags%5B%5D=Cosplay",
+            },
+            {
+              title: "泳衣",
+              value: "https://hanime1.me/search?tags%5B%5D=Swimsuit",
+            },
+            {
+              title: "眼镜",
+              value: "https://hanime1.me/search?tags%5B%5D=Glasses",
+            },
+            {
+              title: "X光透视",
+              value: "https://hanime1.me/search?tags%5B%5D=X-Ray",
+            },
+            {
+              title: "放尿",
+              value: "https://hanime1.me/search?tags%5B%5D=Watersports",
+            },
+          ],
+          value: "https://hanime1.me/search?tags%5B%5D=BDSM",
+        },
+        {
+          name: "sort_by",
+          title: "排序",
+          type: "enumeration",
+          description: "排序",
+          enumOptions: [
+            { title: "最新发布", value: "released_at_unix" },
+            { title: "最多观看", value: "views" },
+            { title: "最多喜欢", value: "likes" },
+          ],
+        },
+        { name: "from", title: "页码", type: "page", description: "页码", value: "1" },
+      ],
+    },
+    // 制作商模块
+    {
+      title: "制作商",
+      description: "按制作商分类浏览",
+      requiresWebView: false,
+      functionName: "loadPage",
+      cacheDuration: 3600,
+      params: [
+        {
+          name: "url",
+          title: "选择制作商",
+          type: "enumeration",
+          belongTo: {
+            paramName: "sort_by",
+            value: ["released_at_unix", "views", "likes"],
+          },
+          enumOptions: [
+            {
+              title: "MS Pictures",
+              value: "https://hanime1.me/search?brands%5B%5D=MS+Pictures",
+            },
+            {
+              title: "Pink Pineapple",
+              value: "https://hanime1.me/search?brands%5B%5D=Pink+Pineapple",
+            },
+            {
+              title: "ARMS",
+              value: "https://hanime1.me/search?brands%5B%5D=Arms",
+            },
+            {
+              title: "Lune Pictures",
+              value: "https://hanime1.me/search?brands%5B%5D=Lune+Pictures",
+            },
+            {
+              title: "Collaboration Works",
+              value: "https://hanime1.me/search?brands%5B%5D=Collaboration+Works",
+            },
+            {
+              title: "Bunnywalker",
+              value: "https://hanime1.me/search?brands%5B%5D=Bunnywalker",
+            },
+            {
+              title: "Studio FOW",
+              value: "https://hanime1.me/search?brands%5B%5D=Studio+FOW",
+            },
+            {
+              title: "Umemaro-3D",
+              value: "https://hanime1.me/search?brands%5B%5D=Umemaro-3D",
+            },
+            {
+              title: "Digital Works",
+              value: "https://hanime1.me/search?brands%5B%5D=Digital+Works",
+            },
+            {
+              title: "Soft on Demand",
+              value: "https://hanime1.me/search?brands%5B%5D=Soft+on+Demand",
+            },
+            {
+              title: "Green Bunny",
+              value: "https://hanime1.me/search?brands%5B%5D=Green+Bunny",
+            },
+            {
+              title: "Blue Eyes",
+              value: "https://hanime1.me/search?brands%5B%5D=Blue+Eyes",
+            },
+            {
+              title: "Vanilla",
+              value: "https://hanime1.me/search?brands%5B%5D=Vanilla",
+            },
+            {
+              title: "Magic Bus",
+              value: "https://hanime1.me/search?brands%5B%5D=Magic+Bus",
+            },
+            {
+              title: "PoRO",
+              value: "https://hanime1.me/search?brands%5B%5D=PoROProject",
+            },
+          ],
+          value: "https://hanime1.me/search?brands%5B%5D=MS+Pictures",
+        },
+        {
+          name: "sort_by",
+          title: "排序",
+          type: "enumeration",
+          description: "排序",
+          enumOptions: [
+            { title: "最新发布", value: "released_at_unix" },
+            { title: "最多观看", value: "views" },
+            { title: "最多喜欢", value: "likes" },
+          ],
+        },
+        { name: "from", title: "页码", type: "page", description: "页码", value: "1" },
+      ],
+    },
+  ],
 };
 
-const BASE_URL = "https://hanime1.me";
-const HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-    "Referer": "https://hanime1.me/"
-};
+// ─── 搜索 ────────────────────────────────────────────────────────────────────
+async function search(params = {}) {
+  const keyword = encodeURIComponent(params.keyword || "");
+  let url = `https://hanime1.me/search?q=${keyword}`;
 
-/**
- * 智能嗅探解析器：专为 Hanime1 的 DOM 结构优化
- */
-function parseVideoList(html) {
-    if (!html || html.includes("Just a moment") || html.includes("Cloudflare")) {
-        return [{ id: "err_cf", type: "text", title: "被安全盾拦截", description: "请尝试开启全局代理节点或稍后再试" }];
+  if (params.sort_by) url += `&order_by=${params.sort_by}`;
+  // 搜索模块有单独的 ordering 参数
+  if (params.ordering) url += `&ordering=${params.ordering}`;
+  else url += `&ordering=desc`;
+
+  if (params.from && params.from > 1) {
+    url += `&p=${params.from - 1}`; // hanime1 页码从 0 开始
+  }
+
+  return await loadPage({ ...params, url });
+}
+
+// ─── 列表页 ───────────────────────────────────────────────────────────────────
+async function loadPage(params = {}) {
+  const sections = await loadPageSections(params);
+  const items = sections.flatMap((section) => section.childItems || []);
+  return items;
+}
+
+async function loadPageSections(params = {}) {
+  try {
+    let url = params.url;
+    if (!url) throw new Error("地址不能为空");
+
+    // 拼接排序参数（非搜索模块调用）
+    if (params.sort_by && !url.includes("order_by=")) {
+      const sep = url.includes("?") ? "&" : "?";
+      url += `${sep}order_by=${params.sort_by}&ordering=desc`;
     }
 
-    const $ = Widget.html.load(html);
-    const resultsMap = new Map();
+    // 页码（hanime1 从 0 起，forward 从 1 起）
+    if (params.from && params.from > 1 && !url.includes("&p=")) {
+      const sep = url.includes("?") ? "&" : "?";
+      url += `${sep}p=${params.from - 1}`;
+    }
 
-    // 智能提取：Hanime1 的视频链接通常包含 '/watch?v='
-    $("a[href*='/watch?v=']").each((i, el) => {
-        const $a = $(el);
-        let href = $a.attr("href");
-        if (!href) return;
-
-        // 补全绝对路径并清理多余的跟踪参数
-        let fullHref = href.startsWith('http') ? href : `${BASE_URL}${href}`;
-        fullHref = fullHref.split('&')[0]; 
-
-        // 初始化 Map 记录
-        if (!resultsMap.has(fullHref)) {
-            resultsMap.set(fullHref, {
-                id: fullHref,
-                type: "url", 
-                mediaType: "movie",
-                title: "",
-                backdropPath: "",
-                link: fullHref,
-                description: "点击播放",
-                playerType: "system"
-            });
-        }
-
-        const item = resultsMap.get(fullHref);
-
-        // 提取封面图
-        const $img = $a.find("img");
-        if ($img.length > 0) {
-            const src = $img.attr("src") || $img.attr("data-src") || "";
-            if (src && !src.includes('avatar') && !src.includes('logo') && !src.startsWith('data:image')) {
-                item.backdropPath = src;
-            }
-        }
-
-        // 提取标题和时长：Hanime1 的标题通常在相邻的 div 或 a 标签的 text 中
-        const text = $a.text().trim();
-        if (text && text.length > 1) {
-            // 匹配时长格式，例如 12:34 或 01:23:45
-            if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(text)) {
-                item.description = `时长: ${text}`;
-            } else if (!item.title || text.length > item.title.length) {
-                // 如果是普通文本，且比当前记录的标题长，则作为视频标题
-                item.title = text;
-            }
-        }
+    const response = await Widget.http.get(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "zh-TW,zh;q=0.9,en;q=0.8",
+        Referer: "https://hanime1.me/",
+      },
     });
 
-    // 过滤掉没有成功提取到标题或封面的无效数据
-    const results = Array.from(resultsMap.values()).filter(item => item.title && item.backdropPath);
-
-    if (results.length === 0) {
-        return [{ id: "empty", type: "text", title: "未获取到视频", description: "可能是当前分类无数据或需验证" }];
+    if (!response || !response.data || typeof response.data !== "string") {
+      throw new Error("无法获取有效的HTML内容");
     }
 
-    return results;
+    const htmlContent = response.data;
+
+    if (
+      htmlContent.includes("Just a moment") ||
+      htmlContent.includes("Cloudflare")
+    ) {
+      throw new Error("被 Cloudflare 拦截，请开启全局代理后重试");
+    }
+
+    return parseHanime1Html(htmlContent);
+  } catch (error) {
+    console.error("loadPageSections 出错:", error.message);
+    throw error;
+  }
 }
 
-async function loadList(params = {}) {
-    let { url, page = 1 } = params;
-    
-    // 拼接分页参数
-    if (page > 1) {
-        url += url.includes('?') ? `&page=${page}` : `?page=${page}`;
-    }
+// ─── HTML 解析 ───────────────────────────────────────────────────────────────
+function parseHanime1Html(htmlContent) {
+  const $ = Widget.html.load(htmlContent);
+  const items = [];
 
-    try {
-        const res = await Widget.http.get(url, { headers: HEADERS });
-        return parseVideoList(res.data);
-    } catch (e) {
-        return [{ id: "err", type: "text", title: "网络请求失败", description: e.message }];
+  // hanime1.me 视频卡片结构：
+  //  <a href="/watch?v=xxxxx" class="...">
+  //    <div class="...">
+  //      <img src="封面" alt="标题">
+  //      <div class="...">标题文字</div>
+  //    </div>
+  //  </a>
+  $("a[href]").each((_, el) => {
+    const $el = $(el);
+    const href = $el.attr("href") || "";
+
+    // hanime1.me 视频页 URL 形如：/watch?v=12345
+    if (!href.includes("/watch") || !href.includes("v=")) return;
+
+    const fullUrl = href.startsWith("http")
+      ? href
+      : `https://hanime1.me${href}`;
+
+    const $img = $el.find("img").first();
+    if (!$img.length) return;
+
+    const cover =
+      $img.attr("data-src") ||
+      $img.attr("src") ||
+      $img.attr("data-lazy") ||
+      "";
+
+    if (!cover || cover.includes("data:image")) return;
+
+    // 标题：alt 属性 或 文字子节点
+    let title = $img.attr("alt") || $img.attr("title") || "";
+    if (!title) {
+      // 尝试找标题文字节点
+      const $titleEl = $el
+        .find(".card-mobile-title, .title, h4, h3, [class*='title']")
+        .first();
+      title = $titleEl.text().trim();
     }
+    if (!title) return;
+
+    // 去重
+    if (items.some((i) => i.id === fullUrl)) return;
+
+    // 时长：若有
+    const $duration = $el.find(".card-mobile-duration, .duration, [class*='duration']").first();
+    const duration = $duration.length ? $duration.text().trim() : "";
+
+    items.push({
+      id: fullUrl,
+      type: "url",
+      title: title,
+      backdropPath: cover,
+      previewUrl: "",
+      link: fullUrl,
+      mediaType: "movie",
+      description: "",
+      releaseDate: duration,
+      playerType: "system",
+    });
+  });
+
+  if (items.length === 0) return [];
+
+  return [{ title: "动漫列表", childItems: items }];
 }
 
-async function searchList(params = {}) {
-    const { keyword, page = 1 } = params;
-    if (!keyword) {
-        return [{ id: "tip", type: "text", title: "提示", description: "请输入要搜索的动漫名或车牌号" }];
-    }
-
-    let url = `${BASE_URL}/search?query=${encodeURIComponent(keyword)}&page=${page}`;
-
-    try {
-        const res = await Widget.http.get(url, { headers: HEADERS });
-        return parseVideoList(res.data);
-    } catch (e) {
-        return [{ id: "err", type: "text", title: "搜索失败", description: e.message }];
-    }
-}
-
+// ─── 详情页 & 播放地址 ────────────────────────────────────────────────────────
 async function loadDetail(link) {
-    try {
-        const res = await Widget.http.get(link, { headers: HEADERS });
-        const html = res.data;
-        
-        if (html.includes("Just a moment") || html.includes("Cloudflare")) {
-             throw new Error("视频详情被安全盾拦截，请开启全局代理");
-        }
+  const response = await Widget.http.get(link, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      Referer: "https://hanime1.me/",
+      "Accept-Language": "zh-TW,zh;q=0.9",
+    },
+  });
 
-        let videoUrl = "";
+  if (
+    response.data &&
+    (response.data.includes("Just a moment") ||
+      response.data.includes("Cloudflare"))
+  ) {
+    throw new Error("视频详情被 Cloudflare 拦截，请开启全局代理后重试");
+  }
 
-        // 策略1：直接匹配 video 标签内的 source src (.mp4 或 .m3u8)
-        const sourceRegex = /<source[^>]+src="([^">]+(mp4|m3u8)[^">]*)"/i;
-        const sourceMatch = html.match(sourceRegex);
-        if (sourceMatch && sourceMatch[1]) {
-            videoUrl = sourceMatch[1];
-        }
+  let hlsUrl = "";
 
-        // 策略2：正则暴力全局搜索
-        if (!videoUrl) {
-            const urlRegex = /(https:\/\/[^"'\s<>]*?\.(mp4|m3u8)[^"'\s<>]*)/i;
-            const urlMatch = html.match(urlRegex);
-            if (urlMatch && urlMatch[1]) {
-                videoUrl = urlMatch[1];
-            }
-        }
+  // hanime1.me 播放地址通常在 <source src="..."> 或 video.js 配置中
+  // 方式1：直接 <source> 标签
+  const m1 = response.data.match(/<source[^>]+src=["']([^"']+\.m3u8[^"']*)['"]/i);
+  if (m1 && m1[1]) hlsUrl = m1[1];
 
-        if (!videoUrl) {
-            throw new Error("无法从该页面中解析出播放地址，可能需要登录或由于原网站限制");
-        }
+  // 方式2：JS 变量 file / src / url
+  if (!hlsUrl) {
+    const m2 = response.data.match(/['"](https?:\/\/[^'"]+\.m3u8[^'"]*)['"]/i);
+    if (m2 && m2[1]) hlsUrl = m2[1];
+  }
 
-        // 获取视频真实标题
-        const $ = Widget.html.load(html);
-        let title = $('meta[property="og:title"]').attr('content') || $('title').text().trim().replace(' - Hanime1.me', '') || "未知影片";
+  // 方式3：video_url 字段
+  if (!hlsUrl) {
+    const m3 = response.data.match(/video_url\s*[:=]\s*['"]([^'"]+)['"]/i);
+    if (m3 && m3[1]) hlsUrl = m3[1];
+  }
 
-        return {
-            id: link,
-            type: "detail",
-            mediaType: "movie",
-            title: title,
-            videoUrl: videoUrl,
-            playerType: "ijk", // ijk 兼容性更强
-            customHeaders: {
-                "Referer": link,
-                "User-Agent": HEADERS["User-Agent"],
-                "Origin": BASE_URL
-            }
-        };
+  if (!hlsUrl) {
+    throw new Error("无法提取播放地址，可能需要代理或登录");
+  }
 
-    } catch (e) {
-        throw new Error(`详情解析错误: ${e.message}`);
-    }
+  return {
+    id: link,
+    type: "detail",
+    videoUrl: hlsUrl,
+    playerType: "ijk",
+    customHeaders: {
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+      Referer: link,
+      Origin: "https://hanime1.me",
+    },
+  };
 }
