@@ -1,0 +1,43 @@
+{
+  "title": "Henrys Widgets",
+  "description": "包含 Jable, MissAV 等精选模块",
+  "icon": "https://assets.vvebo.vip/scripts/icon.png",
+  "widgets": [
+    {
+      "id": "jable_int",
+      "title": "Jable",
+      "description": "修复声音&恢复大量分类",
+      "requiredVersion": "0.0.2",
+      "version": "1.3.0",
+      "author": "nibiru｜MakkaPakka｜蝴蝶",
+      "url": "https://forward-widgets.pages.dev/widgets/jable.js"
+    },
+    {
+      "id": "missav_makka_play",
+      "title": "MissAV_ovo",
+      "description": "简易的missav模块",
+      "requiredVersion": "0.0.1",
+      "version": "2.1.1",
+      "author": "𝙈𝙖𝙠𝙠𝙖𝙋𝙖𝙠𝙠𝙖",
+      "url": "https://forward-widgets.pages.dev/widgets/missavovo.js"
+    },
+    {
+      "id": "Pornhub_int",
+      "title": "Pornhub",
+      "description": "網路收集到的模塊",
+      "requiredVersion": "0.0.1",
+      "version": "1.1.5",
+      "author": "海带",
+      "url": "https://forward-widgets.pages.dev/widgets/pornhub_int.js"
+    },
+    {
+      "id": "xvideos_int",
+      "title": "XVideos",
+      "description": "網路收集到的模塊",
+      "requiredVersion": "0.0.1",
+      "version": "0.9.6",
+      "author": "網路",
+      "url": "https://forward-widgets.pages.dev/widgets/xvideos_int.js"
+    }
+  ]
+}
