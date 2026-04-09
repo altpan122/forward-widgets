@@ -1,95 +1,64 @@
 WidgetMetadata = {
     id: "missav_makka_play",
     title: "MissAV_ovo",
-    author: "𝙨𝙣𝙤𝙡𝙞𝙜𝙝𝙩",
-    description: "采用全新智能嗅探算法，无视网站前端改版",
-    version: "3.0.0",
+    author: "𝙈𝙖𝙠𝙠𝙖𝙋𝙖𝙠𝙠𝙖 (Pro)",
+    description: "智能嗅探引擎，无视网站前端改版",
+    version: "3.0.2", // 更新版本号以强制 App 刷新缓存
     requiredVersion: "0.0.2",
     site: "https://missav.com",
     detailCacheDuration: 60,
     modules: [
         {
-            title: "🔍 搜索",
-            description: "搜索 MissAV 视频",
-            requiresWebView: true, // 开启 WebView 绕过盾
+            title: "浏览视频",
+            description: "浏览 MissAV 各大分类视频",
+            functionName: "loadList",
+            requiresWebView: true, // 开启 WebView 绕过 Cloudflare 盾
+            cacheDuration: 3600,
+            params: [
+                { name: "page", title: "页码", type: "page", description: "页码", value: "1" },
+                { 
+                    name: "category", 
+                    title: "分类", 
+                    type: "enumeration", 
+                    description: "选择频道",
+                    value: "cn/new", 
+                    enumOptions: [
+                        { title: "🆕 最新发布", value: "cn/new" },
+                        { title: "🔥 本周热门", value: "cn/weekly-hot" },
+                        { title: "🌟 月度热门", value: "cn/monthly-hot" },
+                        { title: "🔞 无码流出", value: "cn/uncensored-leak" },
+                        { title: "🇯🇵 东京热", value: "cn/tokyohot" },
+                        { title: "🇨🇳 中文字幕", value: "cn/chinese-subtitle" },
+                        { title: "🎬 素人精选", value: "cn/amateur" },
+                        { title: "🎭 FC2 俱乐部", value: "cn/fc2" },
+                        { title: "一本道", value: "cn/1pondo" },
+                        { title: "Caribbean", value: "cn/caribbeancom" }
+                    ] 
+                },
+                {
+                    name: "sort",
+                    title: "排序",
+                    type: "enumeration",
+                    description: "排序方式",
+                    value: "released_at",
+                    enumOptions: [
+                        { title: "发布日期", value: "released_at" },
+                        { title: "今日浏览", value: "today_views" },
+                        { title: "总浏览量", value: "views" },
+                        { title: "收藏数", value: "saved" }
+                    ]
+                }
+            ]
+        },
+        {
+            title: "🔍 搜索视频",
+            description: "通过番号或演员搜索",
             functionName: "searchList",
+            requiresWebView: true, // 搜索也必须开启防反爬
+            cacheDuration: 3600,
             params: [
-                { name: "keyword", title: "关键词", type: "input", value: "" },
-                { name: "page", title: "页码", type: "page", value: "1" }
-            ]
-        },
-        {
-            title: "🆕 最新发布",
-            description: "最新上线的视频",
-            requiresWebView: true,
-            functionName: "loadList",
-            params: [
-                { name: "url", type: "constant", value: "https://missav.com/cn/new" },
-                { name: "page", title: "页码", type: "page", value: "1" }
-            ]
-        },
-        {
-            title: "🇨🇳 中文字幕",
-            description: "中文字幕精选",
-            requiresWebView: true,
-            functionName: "loadList",
-            params: [
-                { name: "url", type: "constant", value: "https://missav.com/cn/chinese-subtitle" },
-                { name: "page", title: "页码", type: "page", value: "1" }
-            ]
-        },
-        {
-            title: "🔞 无码流出",
-            description: "破解无码系列",
-            requiresWebView: true,
-            functionName: "loadList",
-            params: [
-                { name: "url", type: "constant", value: "https://missav.com/cn/uncensored-leak" },
-                { name: "page", title: "页码", type: "page", value: "1" }
-            ]
-        },
-        {
-            title: "🔥 热门榜单",
-            description: "近期热门浏览",
-            requiresWebView: true,
-            functionName: "loadList",
-            params: [
-                { 
-                    name: "url", 
-                    title: "选择榜单", 
-                    type: "enumeration", 
-                    value: "https://missav.com/cn/weekly-hot",
-                    enumOptions: [
-                        { title: "本周热门", value: "https://missav.com/cn/weekly-hot" },
-                        { title: "本月热门", value: "https://missav.com/cn/monthly-hot" },
-                        { title: "历史最高", value: "https://missav.com/cn/today-hot" } // MissAV的today-hot有时会作为总榜
-                    ] 
-                },
-                { name: "page", title: "页码", type: "page", value: "1" }
-            ]
-        },
-        {
-            title: "🎭 分类探索",
-            description: "按分类浏览",
-            requiresWebView: true,
-            functionName: "loadList",
-            params: [
-                { 
-                    name: "url", 
-                    title: "选择分类", 
-                    type: "enumeration", 
-                    value: "https://missav.com/cn/genres/vr",
-                    enumOptions: [
-                        { title: "VR 虚拟现实", value: "https://missav.com/cn/genres/vr" },
-                        { title: "素人", value: "https://missav.com/cn/amateur" },
-                        { title: "FC2 俱乐部", value: "https://missav.com/cn/fc2" },
-                        { title: "东京热", value: "https://missav.com/cn/tokyohot" },
-                        { title: "一本道", value: "https://missav.com/cn/1pondo" },
-                        { title: "Caribbean", value: "https://missav.com/cn/caribbeancom" },
-                        { title: "Heyzo", value: "https://missav.com/cn/heyzo" }
-                    ] 
-                },
-                { name: "page", title: "页码", type: "page", value: "1" }
+                { name: "keyword", title: "关键词", type: "input", description: "输入搜索关键词", value: "" },
+                { name: "page", title: "页码", type: "page", description: "页码", value: "1" }
             ]
         }
     ]
@@ -104,59 +73,61 @@ const HEADERS = {
 };
 
 /**
- * 全新智能嗅探解析器 (无视CSS类名变动)
+ * 核心：无视前端变动的智能嗅探解析器
  */
 function parseVideoList(html) {
-    if (!html || html.includes("Just a moment") || html.includes("Cloudflare")) {
-        return [{ id: "err_cf", type: "text", title: "被安全盾拦截", description: "请尝试切换全局代理节点或稍后再试" }];
+    if (!html || html.includes("Just a moment") || html.includes("Cloudflare") || html.includes("403 Forbidden")) {
+        return [{ id: "err_cf", type: "text", title: "被安全盾拦截 (403)", description: "请开启全局代理并切换节点，或稍后再试" }];
     }
 
     const $ = Widget.html.load(html);
     const results = [];
     const seenUrls = new Set();
 
-    // 遍历所有图片，通过图片反查所属的视频链接（最稳妥的爬虫策略）
-    $("img").each((i, el) => {
-        const $img = $(el);
+    // 智能嗅探：遍历所有包含链接的 A 标签，寻找内部包裹着图片的结构
+    $("a").each((i, el) => {
+        const $a = $(el);
+        let href = $a.attr("href");
+        if (!href) return;
+
+        // 过滤掉网站的导航菜单链接
+        if (href.includes('/search') || href.includes('/categories') || href.includes('/actresses') || href.includes('/makers')) return;
+
+        // 必须含有图片才大概率是视频卡片
+        const $img = $a.find("img");
+        if ($img.length === 0) return;
+
         let imgSrc = $img.attr("data-src") || $img.attr("src") || "";
-        
-        // 过滤掉网站Logo、头像和极其微小的图标
+        // 排除干扰的 icon 和 logo
         if (!imgSrc || imgSrc.includes('logo') || imgSrc.includes('avatar') || imgSrc.startsWith('data:image')) return;
 
-        // 寻找包裹该图片的最近的 <a> 标签
-        const $a = $img.closest("a");
-        if ($a.length === 0) return;
-
-        let href = $a.attr("href");
-        // 过滤掉非视频链接
-        if (!href || href.includes('/search') || href.includes('/categories') || href.includes('/actresses')) return;
-        
-        // 补全相对路径
         if (href.startsWith('/')) {
             href = `${BASE_URL}${href}`;
         }
 
-        // 去重机制
+        // 严格去重机制
         if (seenUrls.has(href)) return;
         seenUrls.add(href);
 
-        // 智能提取标题 (先找图片的alt，没有再找a标签的文字，再找周边文字)
+        // 智能提取标题：优先取 alt、title，兜底取父元素的文本
         let title = $img.attr("alt") || $a.attr("title") || "";
-        if (!title) {
-            title = $a.parent().text().trim().replace(/\s+/g, ' '); // 压缩多余空格
+        if (!title || title.length < 2) {
+            const $parent = $a.parent();
+            title = $parent.length > 0 ? $parent.text().trim().replace(/\s+/g, ' ') : "未知视频";
         }
-        
-        // 智能提取时长 (利用正则在周边文本中寻找 mm:ss 或 hh:mm:ss)
+
+        // 智能提取时长：利用正则在周边文本中寻找 mm:ss 格式
         let duration = "";
-        const surroundingText = $a.parent().text();
-        const timeMatch = surroundingText.match(/\d{2}:\d{2}(:\d{2})?/);
+        const $parent = $a.parent();
+        const surroundingText = $parent.length > 0 ? $parent.text() : "";
+        const timeMatch = surroundingText ? surroundingText.match(/\d{2}:\d{2}(:\d{2})?/) : null;
         if (timeMatch) {
             duration = timeMatch[0];
         }
 
         results.push({
-            id: href, // 使用 url 作为唯一标识
-            type: "url", // 👉 核心：这里使用 url 类型，App 才能正确跳转到 loadDetail
+            id: href,
+            type: "url", // 严格遵循 Forward 规范
             mediaType: "movie",
             title: title,
             backdropPath: imgSrc, 
@@ -167,36 +138,34 @@ function parseVideoList(html) {
     });
 
     if (results.length === 0) {
-        return [{ id: "empty", type: "text", title: "当前页面未找到视频", description: "可能是网站又改版了，或者该分类下暂无内容" }];
+        return [{ id: "empty", type: "text", title: "未获取到视频内容", description: "请检查网站是否可以正常访问" }];
     }
 
     return results;
 }
 
-// 供各个模块调用的列表加载器
 async function loadList(params = {}) {
-    let { url, page = 1 } = params;
+    const { page = 1, category = "cn/new", sort = "released_at" } = params;
     
-    if (page > 1) {
-        url += url.includes('?') ? `&page=${page}` : `?page=${page}`;
-    }
+    let url = `${BASE_URL}/${category}?sort=${sort}`;
+    if (page > 1) url += `&page=${page}`;
 
     try {
         const res = await Widget.http.get(url, { headers: HEADERS });
         return parseVideoList(res.data);
     } catch (e) {
-        return [{ id: "err", type: "text", title: "加载失败", description: e.message }];
+        return [{ id: "err", type: "text", title: "网络请求失败", description: e.message }];
     }
 }
 
-// 搜索加载器
 async function searchList(params = {}) {
-    const { keyword, page = 1 } = params;
+    const { page = 1, keyword } = params;
     if (!keyword) {
-        return [{ id: "tip", type: "text", title: "请输入要搜索的车牌号或演员" }];
+        return [{ id: "tip", type: "text", title: "提示", description: "请输入关键词开始搜索" }];
     }
 
-    let url = `${BASE_URL}/cn/search/${encodeURIComponent(keyword)}?page=${page}`;
+    let url = `${BASE_URL}/cn/search/${encodeURIComponent(keyword)}`;
+    if (page > 1) url += `?page=${page}`;
 
     try {
         const res = await Widget.http.get(url, { headers: HEADERS });
@@ -206,7 +175,6 @@ async function searchList(params = {}) {
     }
 }
 
-// 详情播放页解析器
 async function loadDetail(link) {
     try {
         const res = await Widget.http.get(link, { 
@@ -215,30 +183,27 @@ async function loadDetail(link) {
         const html = res.data;
         
         if (html.includes("Just a moment") || html.includes("Cloudflare")) {
-             throw new Error("解析播放地址被安全盾拦截，请开启全局代理");
+             throw new Error("解析播放地址被安全盾拦截，请开启全局代理或稍后再试");
         }
 
         let videoUrl = "";
 
-        // 提取策略 1：直接正则暴力匹配常见的 m3u8 (最快速)
+        // 策略1：快速匹配原生 m3u8
         const m3u8Regex = /(https:\/\/[^"'\s<>]*?\.m3u8[^"'\s<>]*)/g;
         const matches = html.match(m3u8Regex);
         if (matches && matches.length > 0) {
-            // 尽量寻找包含 playlist 的主链接，过滤掉无关的片段
             const playlistMatch = matches.find(m => m.includes('playlist.m3u8')) || matches[0];
             videoUrl = playlistMatch.replace(/\\/g, ''); 
         }
 
-        // 提取策略 2：针对 MissAV 常见的 eval() 混淆代码进行 UUID 提取
+        // 策略2：破解 MissAV 常见的 eval 混淆，提取唯一 UUID
         if (!videoUrl) {
              const $ = Widget.html.load(html);
              $('script').each((i, el) => {
-                 const code = $(el).html();
-                 if (code && code.includes('eval(function(p,a,c,k,e,d)')) {
-                     // 从混淆代码中揪出视频唯一的 UUID
+                 const code = $(el).html() || "";
+                 if (code.includes('eval(function(p,a,c,k,e,d)')) {
                      const uuidMatch = code.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/);
                      if (uuidMatch) {
-                         // 拼接官方 CDN 地址
                          videoUrl = `https://surrit.com/${uuidMatch[0]}/playlist.m3u8`;
                          return false; 
                      }
@@ -247,10 +212,9 @@ async function loadDetail(link) {
         }
 
         if (!videoUrl) {
-            throw new Error("无法从页面代码中解析出 m3u8 播放地址");
+            throw new Error("无法从页面中提取到播放流");
         }
 
-        // 获取视频真实标题
         const $ = Widget.html.load(html);
         let title = $('meta[property="og:title"]').attr('content') || $('h1').text().trim() || "未知影片";
 
@@ -260,7 +224,7 @@ async function loadDetail(link) {
             mediaType: "movie",
             title: title,
             videoUrl: videoUrl,
-            playerType: "ijk", // 👉 强制使用 ijk 播放器兼容性更好
+            playerType: "ijk", // 强制调用 ijk 内核避免黑屏/无声
             customHeaders: {
                 "Referer": link,
                 "User-Agent": HEADERS["User-Agent"],
@@ -269,6 +233,6 @@ async function loadDetail(link) {
         };
 
     } catch (e) {
-        throw new Error(`详情页解析错误: ${e.message}`);
+        throw new Error(`详情解析错误: ${e.message}`);
     }
 }
