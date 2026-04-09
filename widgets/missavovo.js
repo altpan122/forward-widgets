@@ -1,7 +1,7 @@
 WidgetMetadata = {
     id: "missav_makka_play",
     title: "MissAV_ovo",
-    author: "𝙈𝙖𝙠𝙠𝙖𝙋𝙖𝙠𝙠𝙖 (Fixed 403)",
+    author: "𝙨𝙣𝙤𝙡𝙞𝙜𝙝𝙩",
     description: "修复 403 拦截问题，采用 WebView 绕过",
     version: "2.1.3",
     requiredVersion: "0.0.1",
