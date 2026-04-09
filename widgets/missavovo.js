@@ -1,15 +1,16 @@
 WidgetMetadata = {
     id: "missav_makka_play",
     title: "MissAV_ovo",
-    author: "𝙈𝙖𝙠𝙠𝙖𝙋𝙖𝙠𝙠𝙖",
-    description: "修复无法获取视频的问题",
-    version: "2.1.2",
+    author: "𝙈𝙖𝙠𝙠𝙖𝙋𝙖𝙠𝙠𝙖 (Fixed 403)",
+    description: "修复 403 拦截问题，采用 WebView 绕过",
+    version: "2.1.3",
     requiredVersion: "0.0.1",
-    site: "https://missav.ai",
+    site: "https://missav.com",
     modules: [
         {
             title: "浏览视频",
             functionName: "loadList",
+            requiresWebView: true,
             params: [
                 { name: "page", title: "页码", type: "page" },
                 { 
@@ -43,6 +44,7 @@ WidgetMetadata = {
         {
             title: "🔍 搜索视频",
             functionName: "searchList",
+            requiresWebView: true,
             params: [
                 { name: "keyword", title: "关键词", type: "input", value: "" },
                 { name: "page", title: "页码", type: "page" }
@@ -51,18 +53,23 @@ WidgetMetadata = {
     ]
 };
 
-const BASE_URL = "https://missav.ai";
+const BASE_URL = "https://missav.com"; 
+
 const HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
     "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-    "Referer": "https://missav.ai/",
-    "Connection": "keep-alive"
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Upgrade-Insecure-Requests": "1"
 };
 
 function parseVideoList(html) {
-    if (!html || html.includes("Just a moment")) {
-        return [{ id: "err_cf", type: "text", title: "被 Cloudflare 拦截", description: "请开启全局代理或稍后再试" }];
+    // 增加对 403 页面的文字探测
+    if (!html || html.includes("Just a moment") || html.includes("403 Forbidden") || html.includes("Cloudflare")) {
+        return [{ id: "err_cf", type: "text", title: "访问被拒绝 (403)", description: "请尝试开启全局代理节点，或稍后再试" }];
     }
 
     const $ = Widget.html.load(html);
@@ -95,7 +102,7 @@ function parseVideoList(html) {
         }
     });
 
-    return results.length > 0 ? results : [{ id: "empty", type: "text", title: "没有找到相关视频" }];
+    return results.length > 0 ? results : [{ id: "empty", type: "text", title: "没有找到相关视频内容" }];
 }
 
 async function loadList(params = {}) {
@@ -108,6 +115,10 @@ async function loadList(params = {}) {
         const res = await Widget.http.get(url, { headers: HEADERS });
         return parseVideoList(res.data);
     } catch (e) {
+        // 捕获 403 错误并给出人性化提示
+        if (e.message.includes("403")) {
+            return [{ id: "err", type: "text", title: "触发网站防护 (403)", description: "你的代理 IP 被 MissAV 拦截，请切换梯子节点(建议日本/台湾)并开启全局模式。" }];
+        }
         return [{ id: "err", type: "text", title: "加载失败", description: e.message }];
     }
 }
@@ -125,16 +136,26 @@ async function searchList(params = {}) {
         const res = await Widget.http.get(url, { headers: HEADERS });
         return parseVideoList(res.data);
     } catch (e) {
+        if (e.message.includes("403")) {
+            return [{ id: "err", type: "text", title: "触发网站防护 (403)", description: "请切换代理节点并开启全局模式。" }];
+        }
         return [{ id: "err", type: "text", title: "搜索失败", description: e.message }];
     }
 }
 
 async function loadDetail(link) {
     try {
-        const res = await Widget.http.get(link, { headers: HEADERS });
+        // 将传递进来的链接强制替换为当前有效域
+        const safeLink = link.replace(/https:\/\/missav\.[a-z]+/, BASE_URL);
+        const res = await Widget.http.get(safeLink, { headers: HEADERS });
         const html = res.data;
-        const $ = Widget.html.load(html);
         
+        // 防护拦截检测
+        if (html.includes("Just a moment") || html.includes("403 Forbidden")) {
+             throw new Error("获取播放地址被 Cloudflare 拦截 (403)");
+        }
+
+        const $ = Widget.html.load(html);
         let title = $('meta[property="og:title"]').attr('content') || $('h1').text().trim();
         let videoUrl = "";
         
@@ -168,11 +189,11 @@ async function loadDetail(link) {
                 mediaType: "movie",
                 title: title,
                 videoUrl: videoUrl,
-                playerType: "system", // 或 "ijk"
+                playerType: "system",
                 customHeaders: {
-                    "Referer": "https://missav.ai/",
+                    "Referer": `${BASE_URL}/`,
                     "User-Agent": HEADERS["User-Agent"],
-                    "Origin": "https://missav.ai"
+                    "Origin": BASE_URL
                 }
             };
         } else {
@@ -180,6 +201,6 @@ async function loadDetail(link) {
         }
 
     } catch (e) {
-        throw new Error(`请求详情页发生错误: ${e.message}`);
+        throw new Error(`详情页错误: ${e.message}`);
     }
 }
