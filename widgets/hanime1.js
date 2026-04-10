@@ -2,20 +2,6 @@
 WidgetMetadata = {
     id: "hanime1",
     title: "Hanime1(最新/分类/排行/搜索)",
-    globalParams: [
-        {
-            name: "cookie",
-            title: "Cookie（必填）",
-            type: "input",
-            description: "浏览器打开 hanime1.me → F12 → Network → 刷新页面 → 点任意请求 → Request Headers → 复制 cookie 整行的值",
-            placeholders: [
-                {
-                    title: "示例格式",
-                    value: "cf_clearance=xxx; XSRF-TOKEN=xxx; hanime1_session=xxx",
-                },
-            ],
-        },
-    ],
     modules: [
         {
             id: "latest",
@@ -24,6 +10,15 @@ WidgetMetadata = {
             functionName: "loadLatestItems",
             cacheDuration: 3600,
             params: [
+                {
+                    name: "cookie",
+                    title: "Cookie（必填）",
+                    type: "input",
+                    description: "浏览器打开 hanime1.me → F12 → Network → 刷新 → 点任意请求 → Request Headers → 复制 cookie 整行的值",
+                    placeholders: [
+                        { title: "格式示例", value: "cf_clearance=xxx; XSRF-TOKEN=xxx; hanime1_session=xxx" },
+                    ],
+                },
                 { name: "page", title: "页码", type: "page" },
             ],
         },
@@ -34,6 +29,15 @@ WidgetMetadata = {
             functionName: "loadCategoryItems",
             cacheDuration: 7200,
             params: [
+                {
+                    name: "cookie",
+                    title: "Cookie（必填）",
+                    type: "input",
+                    description: "浏览器打开 hanime1.me → F12 → Network → 刷新 → 点任意请求 → Request Headers → 复制 cookie 整行的值",
+                    placeholders: [
+                        { title: "格式示例", value: "cf_clearance=xxx; XSRF-TOKEN=xxx; hanime1_session=xxx" },
+                    ],
+                },
                 {
                     name: "genre",
                     title: "分类",
@@ -102,6 +106,15 @@ WidgetMetadata = {
             cacheDuration: 7200,
             params: [
                 {
+                    name: "cookie",
+                    title: "Cookie（必填）",
+                    type: "input",
+                    description: "浏览器打开 hanime1.me → F12 → Network → 刷新 → 点任意请求 → Request Headers → 复制 cookie 整行的值",
+                    placeholders: [
+                        { title: "格式示例", value: "cf_clearance=xxx; XSRF-TOKEN=xxx; hanime1_session=xxx" },
+                    ],
+                },
+                {
                     name: "sort_by",
                     title: "榜单",
                     type: "enumeration",
@@ -126,6 +139,15 @@ WidgetMetadata = {
             cacheDuration: 3600,
             params: [
                 {
+                    name: "cookie",
+                    title: "Cookie（必填）",
+                    type: "input",
+                    description: "浏览器打开 hanime1.me → F12 → Network → 刷新 → 点任意请求 → Request Headers → 复制 cookie 整行的值",
+                    placeholders: [
+                        { title: "格式示例", value: "cf_clearance=xxx; XSRF-TOKEN=xxx; hanime1_session=xxx" },
+                    ],
+                },
+                {
                     name: "keyword",
                     title: "关键词",
                     type: "input",
@@ -136,7 +158,7 @@ WidgetMetadata = {
             ],
         },
     ],
-    version: "1.0.3",
+    version: "1.0.4",
     requiredVersion: "0.0.1",
     description: "解析 Hanime1 最新上架、分类浏览、排行榜、搜索功能（需填入 Cookie）",
     author: "community",
@@ -161,20 +183,24 @@ function buildHeaders(cookie) {
         "Sec-Fetch-Site": "same-origin",
         "X-Requested-With": "XMLHttpRequest",
     };
-    if (cookie) h["Cookie"] = cookie;
+    if (cookie && cookie.trim().length > 0) {
+        h["Cookie"] = cookie.trim();
+    }
     return h;
 }
 
 // ========== POST 搜索 API ==========
 async function fetchSearchAPI(body, cookie) {
     const url = "https://hanime1.me/api/v8/search-uncensored";
+    const headers = {
+        ...buildHeaders(cookie),
+        "Content-Type": "application/json;charset=UTF-8",
+    };
+    console.log("Cookie 长度:", (cookie || "").length);
+    console.log("Cookie 前50字符:", (cookie || "").substring(0, 50));
+    console.log("请求 URL:", url);
     try {
-        const response = await Widget.http.post(url, body, {
-            headers: {
-                ...buildHeaders(cookie),
-                "Content-Type": "application/json;charset=UTF-8",
-            },
-        });
+        const response = await Widget.http.post(url, body, { headers });
         console.log("POST 状态码:", response.statusCode);
         const data = typeof response.data === "string" ? JSON.parse(response.data) : response.data;
         return data;
@@ -193,7 +219,6 @@ function formatNumber(n) {
 
 function mapVideoToItem(video) {
     if (!video) return null;
-    // 网站实际用 ?v= 参数，slug 即视频 ID
     const slug = video.slug || String(video.id || "");
     if (!slug) return null;
     const title = video.name || video.title || "未知标题";
@@ -209,12 +234,10 @@ function mapVideoToItem(video) {
         posterPath: cover,
         backdropPath: cover,
         description: desc,
-        // 网站真实 URL 格式是 ?v=，不是 /watch/
         link: `https://hanime1.me/watch?v=${slug}`,
     };
 }
 
-// ========== 构造请求体 ==========
 function buildBody({ keyword = "", tags = [], orderBy = "published_at_unix", page = 1 }) {
     return {
         search_text: keyword,
@@ -224,11 +247,10 @@ function buildBody({ keyword = "", tags = [], orderBy = "published_at_unix", pag
         blacklist: [],
         order_by: orderBy,
         ordering: "desc",
-        page: page - 1,   // API 从 0 开始
+        page: page - 1,
     };
 }
 
-// ========== 通用列表加载 ==========
 async function loadList({ keyword = "", tags = [], orderBy = "published_at_unix", page = 1, cookie = "" }) {
     const body = buildBody({ keyword, tags, orderBy, page });
     console.log("请求体:", JSON.stringify(body));
@@ -242,6 +264,8 @@ async function loadList({ keyword = "", tags = [], orderBy = "published_at_unix"
 // ========== 各模块入口 ==========
 
 async function loadLatestItems(params = {}) {
+    console.log("params keys:", Object.keys(params));
+    console.log("params.cookie 存在:", !!params.cookie);
     return await loadList({
         orderBy: "published_at_unix",
         page: params.page || 1,
@@ -250,6 +274,7 @@ async function loadLatestItems(params = {}) {
 }
 
 async function loadCategoryItems(params = {}) {
+    console.log("params keys:", Object.keys(params));
     return await loadList({
         tags: [params.genre || "裸體"],
         orderBy: params.sort_by || "published_at_unix",
@@ -259,6 +284,7 @@ async function loadCategoryItems(params = {}) {
 }
 
 async function loadRankItems(params = {}) {
+    console.log("params keys:", Object.keys(params));
     return await loadList({
         orderBy: params.sort_by || "views",
         page: params.page || 1,
@@ -267,6 +293,7 @@ async function loadRankItems(params = {}) {
 }
 
 async function loadSearchItems(params = {}) {
+    console.log("params keys:", Object.keys(params));
     const keyword = params.keyword || "";
     if (!keyword) return [];
     return await loadList({
@@ -280,7 +307,6 @@ async function loadSearchItems(params = {}) {
 async function loadDetail(link) {
     console.log("loadDetail:", link);
     try {
-        // 兼容两种格式：?v=13457 和 /watch/slug
         let videoId = null;
         const vMatch = link.match(/[?&]v=([^&]+)/);
         if (vMatch) {
@@ -295,8 +321,6 @@ async function loadDetail(link) {
         const apiUrl = `https://hanime1.me/api/v8/video?id=${videoId}`;
         const response = await Widget.http.get(apiUrl, { headers: buildHeaders("") });
         const data = typeof response.data === "string" ? JSON.parse(response.data) : response.data;
-
-        console.log("视频详情片段:", JSON.stringify(data).substring(0, 500));
 
         if (!data || !data.videos_manifest) throw new Error("获取视频详情失败，状态码: " + response.statusCode);
 
