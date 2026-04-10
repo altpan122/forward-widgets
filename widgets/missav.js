@@ -1,9 +1,10 @@
-WidgetMetadata = {
+// ================== 模块元信息 ==================
+const WidgetMetadata = {
     id: "missav_makka_play",
     title: "MissAV_ovo",
     author: "𝙈𝙖𝙠𝙠𝙖𝙋𝙖𝙠𝙠𝙖",
     description: "简易的missav模块",
-    version: "2.1.1",
+    version: "2.1.2",
     requiredVersion: "0.0.1",
     site: "https://missav.ai",
     modules: [
@@ -17,7 +18,7 @@ WidgetMetadata = {
                     name: "category", 
                     title: "分类", 
                     type: "enumeration", 
-                    value: "dm588/cn/release", // 修正默认值匹配列表
+                    value: "dm588/cn/release",
                     enumOptions: [
                         { title: "🆕 最新发布", value: "dm588/cn/release" },
                         { title: "🔥 本周热门", value: "dm169/cn/weekly-hot" },
@@ -41,7 +42,6 @@ WidgetMetadata = {
                 }
             ]
         },
-        // --- 新增搜索模块 ---
         {
             title: "🔍 搜索视频",
             functionName: "searchList",
@@ -54,16 +54,23 @@ WidgetMetadata = {
     ]
 };
 
+// ================== 基础配置 ==================
 const BASE_URL = "https://missav.ai";
+
 const HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-    "Referer": "https://missav.ai/",
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+    "Accept": "text/html,application/xhtml+xml",
+    "Accept-Language": "zh-CN,zh;q=0.9",
+    "Referer": BASE_URL,
     "Connection": "keep-alive"
 };
 
-// --- 公共解析逻辑 (提取出来供浏览和搜索共用) ---
+// ================== 工具保护 ==================
+if (typeof Widget === "undefined") {
+    throw new Error("Widget API 未注入，请在 forward 环境运行");
+}
+
+// ================== 公共解析 ==================
 function parseVideoList(html) {
     if (!html || html.includes("Just a moment")) {
         return [{ id: "err_cf", type: "text", title: "被 Cloudflare 拦截", subTitle: "请稍后重试" }];
@@ -76,7 +83,7 @@ function parseVideoList(html) {
         const $el = $(el);
         const $link = $el.find("a.text-secondary");
         const href = $link.attr("href");
-        
+
         if (href) {
             const title = $link.text().trim();
             const $img = $el.find("img");
@@ -84,14 +91,13 @@ function parseVideoList(html) {
             const duration = $el.find(".absolute.bottom-1.right-1").text().trim();
 
             const videoId = href.split('/').pop().replace(/-uncensored-leak|-chinese-subtitle/g, '').toUpperCase();
-            // 尝试构建高清封面
             const coverUrl = `https://fourhoi.com/${videoId.toLowerCase()}/cover-t.jpg`;
 
             results.push({
                 id: href,
-                type: "link", 
+                type: "link",
                 title: title,
-                coverUrl: coverUrl || imgSrc, 
+                coverUrl: coverUrl || imgSrc,
                 link: href,
                 description: `时长: ${duration} | 番号: ${videoId}`,
                 customHeaders: HEADERS
@@ -102,10 +108,10 @@ function parseVideoList(html) {
     return results.length > 0 ? results : [{ id: "empty", type: "text", title: "没有找到相关视频" }];
 }
 
-// 1. 浏览列表
+// ================== 浏览 ==================
 async function loadList(params = {}) {
     const { page = 1, category = "dm588/cn/release", sort = "released_at" } = params;
-    
+
     let url = `${BASE_URL}/${category}?sort=${sort}`;
     if (page > 1) url += `&page=${page}`;
 
@@ -117,15 +123,14 @@ async function loadList(params = {}) {
     }
 }
 
-// 2. 搜索功能 (新增)
+// ================== 搜索 ==================
 async function searchList(params = {}) {
     const { page = 1, keyword } = params;
-    
+
     if (!keyword) {
         return [{ id: "tip", type: "text", title: "请输入关键词开始搜索" }];
     }
 
-    // 构建搜索 URL: https://missav.ai/cn/search/KEYWORD?page=N
     let url = `${BASE_URL}/cn/search/${encodeURIComponent(keyword)}`;
     if (page > 1) url += `?page=${page}`;
 
@@ -137,35 +142,32 @@ async function searchList(params = {}) {
     }
 }
 
-// 3. 详情解析 (保持原样，供可能的二级调用)
+// ================== 详情 ==================
 async function loadDetail(link) {
     try {
         const res = await Widget.http.get(link, { headers: HEADERS });
         const html = res.data;
         const $ = Widget.html.load(html);
-        
+
         let title = $('meta[property="og:title"]').attr('content') || $('h1').text().trim();
-        
         let videoUrl = "";
-        
+
         $('script').each((i, el) => {
             const scriptContent = $(el).html() || "";
-            
-            // 1. surrit 直连
+
             if (scriptContent.includes('surrit.com') && scriptContent.includes('.m3u8')) {
                 const matches = scriptContent.match(/https:\/\/surrit\.com\/[a-f0-9\-]+\/[^"'\s]*\.m3u8/g);
                 if (matches && matches.length > 0) {
                     videoUrl = matches[0];
-                    return false; 
+                    return false;
                 }
             }
-            
-            // 2. eval 混淆
+
             if (!videoUrl && scriptContent.includes('eval(function')) {
-                const uuidMatches = scriptContent.match(/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/g);
+                const uuidMatches = scriptContent.match(/[a-f0-9\-]{36}/g);
                 if (uuidMatches && uuidMatches.length > 0) {
                     videoUrl = `https://surrit.com/${uuidMatches[0]}/playlist.m3u8`;
-                    return false; 
+                    return false;
                 }
             }
         });
@@ -183,9 +185,9 @@ async function loadDetail(link) {
                 videoUrl: videoUrl,
                 playerType: "system",
                 customHeaders: {
-                    "Referer": "https://missav.ai/",
+                    "Referer": BASE_URL,
                     "User-Agent": HEADERS["User-Agent"],
-                    "Origin": "https://missav.ai"
+                    "Origin": BASE_URL
                 }
             }];
         } else {
@@ -195,4 +197,20 @@ async function loadDetail(link) {
     } catch (e) {
         return [{ id: "err", type: "text", title: "请求错误", subTitle: e.message }];
     }
+}
+
+// ================== 导出（关键修复） ==================
+const api = {
+    WidgetMetadata,
+    loadList,
+    searchList,
+    loadDetail
+};
+
+// ESM
+export default api;
+
+// CommonJS（forward 兼容）
+if (typeof module !== "undefined") {
+    module.exports = api;
 }
