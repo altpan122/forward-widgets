@@ -1,5 +1,5 @@
 WidgetMetadata = {
-    id: "Pornhub_int",
+    id: "Pornhub",
     title: "Pornhub",
     version: "1.1.5",
     requiredVersion: "0.0.1",
