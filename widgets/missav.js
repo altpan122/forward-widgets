@@ -1,7 +1,7 @@
 // ================== 模块元信息 ==================
 const WidgetMetadata = {
-    id: "missav_makka_play",
-    title: "MissAV_ovo",
+    id: "missav",
+    title: "MissAV",
     author: "𝙈𝙖𝙠𝙠𝙖𝙋𝙖𝙠𝙠𝙖",
     description: "简易的missav模块",
     version: "2.1.2",
