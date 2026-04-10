@@ -1,10 +1,9 @@
-// ================== 模块信息 ==================
 const WidgetMetadata = {
     id: "missav",
     title: "MissAV",
     author: "𝙨𝙣𝙤𝙡𝙞𝙜𝙝𝙩",
-    description: "增强稳定版（抗CF+高成功率）",
-    version: "3.0.0",
+    description: "增强稳定版（双环境兼容）",
+    version: "3.1.0",
     requiredVersion: "0.0.1",
     site: "https://missav.ai",
     modules: [
@@ -48,15 +47,23 @@ const HEADERS = {
     "Origin": BASE_URL
 };
 
-// ================== 工具检测 ==================
-if (typeof Widget === "undefined") {
-    throw new Error("请在 forward 环境运行");
+// ================== 环境适配 ==================
+function getWidgetSafe() {
+    if (typeof Widget === "undefined") {
+        return null; // Node 环境
+    }
+    return Widget;
 }
 
-// ================== 工具函数 ==================
+// ================== 安全请求 ==================
 async function safeGet(url, retry = 2) {
+    const W = getWidgetSafe();
+    if (!W) {
+        throw new Error("当前为 Node 环境，无法发起请求");
+    }
+
     try {
-        return await Widget.http.get(url, { headers: HEADERS });
+        return await W.http.get(url, { headers: HEADERS });
     } catch (e) {
         if (retry > 0) return await safeGet(url, retry - 1);
         throw e;
@@ -64,16 +71,19 @@ async function safeGet(url, retry = 2) {
 }
 
 function isCloudflare(html) {
-    return html.includes("Just a moment") || html.includes("cf-browser-verification");
+    return html && (html.includes("Just a moment") || html.includes("cf-browser-verification"));
 }
 
 // ================== 列表解析 ==================
 function parseList(html) {
+    const W = getWidgetSafe();
+    if (!W) return [];
+
     if (!html || isCloudflare(html)) {
-        return [{ id: "cf", type: "text", title: "被 Cloudflare 拦截，请稍后重试" }];
+        return [{ id: "cf", type: "text", title: "被 Cloudflare 拦截" }];
     }
 
-    const $ = Widget.html.load(html);
+    const $ = W.html.load(html);
     const list = [];
 
     $("div.group").each((i, el) => {
@@ -102,6 +112,9 @@ function parseList(html) {
 
 // ================== 浏览 ==================
 async function loadList(params = {}) {
+    const W = getWidgetSafe();
+    if (!W) return [];
+
     const { page = 1, category = "dm588/cn/release" } = params;
 
     let url = `${BASE_URL}/${category}`;
@@ -113,6 +126,9 @@ async function loadList(params = {}) {
 
 // ================== 搜索 ==================
 async function searchList(params = {}) {
+    const W = getWidgetSafe();
+    if (!W) return [];
+
     const { keyword, page = 1 } = params;
 
     if (!keyword) {
@@ -128,6 +144,9 @@ async function searchList(params = {}) {
 
 // ================== 播放解析 ==================
 async function loadDetail(link) {
+    const W = getWidgetSafe();
+    if (!W) return [];
+
     try {
         const res = await safeGet(link);
         const html = res.data;
@@ -138,11 +157,11 @@ async function loadDetail(link) {
 
         let videoUrl = "";
 
-        // ✅ 策略1：直接抓 m3u8
-        const m3u8Match = html.match(/https:\/\/[^"]+\.m3u8[^"]*/);
-        if (m3u8Match) videoUrl = m3u8Match[0];
+        // 策略1
+        const m3u8 = html.match(/https:\/\/[^"]+\.m3u8[^"]*/);
+        if (m3u8) videoUrl = m3u8[0];
 
-        // ✅ 策略2：UUID 拼接
+        // 策略2
         if (!videoUrl) {
             const uuid = html.match(/[a-f0-9\-]{36}/);
             if (uuid) {
@@ -150,14 +169,14 @@ async function loadDetail(link) {
             }
         }
 
-        // ✅ 策略3：source fallback
+        // 策略3
         if (!videoUrl) {
             const src = html.match(/source\s*=\s*['"]([^'"]+)/);
             if (src) videoUrl = src[1];
         }
 
         if (!videoUrl) {
-            return [{ id: "err", type: "text", title: "解析失败（无播放地址）" }];
+            return [{ id: "err", type: "text", title: "解析失败" }];
         }
 
         return [{
@@ -182,8 +201,10 @@ const api = {
     loadDetail
 };
 
+// ESM
 export default api;
 
+// CommonJS
 if (typeof module !== "undefined") {
     module.exports = api;
 }
