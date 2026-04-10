@@ -74,11 +74,11 @@ WidgetMetadata = {
                     name: "sort_by",
                     title: "排序",
                     type: "enumeration",
-                    value: "最新",
+                    value: "published_at_unix",
                     enumOptions: [
-                        { title: "最新", value: "最新" },
-                        { title: "最多觀看", value: "最多觀看" },
-                        { title: "最多喜歡", value: "最多喜歡" },
+                        { title: "最新", value: "published_at_unix" },
+                        { title: "最多觀看", value: "views" },
+                        { title: "最多喜歡", value: "likes" },
                     ],
                 },
                 {
@@ -140,220 +140,189 @@ WidgetMetadata = {
             ],
         },
     ],
-    version: "1.0.0",
+    version: "1.0.1",
     requiredVersion: "0.0.1",
     description: "解析 Hanime1 最新上架、分类浏览、排行榜、搜索功能",
     author: "community",
     site: "https://hanime1.me",
 };
 
-// ========== 常量配置 ==========
-const BASE_URL = "https://hanime1.me";
-const DEFAULT_HEADERS = {
-    "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Referer": BASE_URL,
-    "Accept": "application/json, text/plain, */*",
-};
+// ========== 请求头 ==========
+// hanime1 的 JSON API 需要完整请求头，否则返回 403
+function buildHeaders() {
+    return {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer": "https://hanime1.me/",
+        "Origin": "https://hanime1.me",
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "zh-TW,zh;q=0.9,en;q=0.8",
+        "X-Requested-With": "XMLHttpRequest",
+    };
+}
 
-// ========== 核心解析函数 ==========
-
-/**
- * 通过 API 获取视频列表
- */
-async function fetchVideoList(apiUrl) {
+// ========== 核心 POST 搜索 API ==========
+// 正确端点: POST https://hanime1.me/api/v8/search-uncensored
+async function fetchSearchAPI(body) {
+    const url = "https://hanime1.me/api/v8/search-uncensored";
     try {
-        const response = await Widget.http.get(apiUrl, { headers: DEFAULT_HEADERS });
-        console.log("API 请求:", apiUrl);
-        console.log("API 响应:", JSON.stringify(response.data).substring(0, 500));
-        return response.data || null;
+        const response = await Widget.http.post(url, body, {
+            headers: {
+                ...buildHeaders(),
+                "Content-Type": "application/json;charset=UTF-8",
+            },
+        });
+        console.log("POST 状态码:", response.statusCode);
+        const data = (typeof response.data === "string")
+            ? JSON.parse(response.data)
+            : response.data;
+        return data;
     } catch (e) {
-        console.error("请求失败:", e.message);
+        console.error("fetchSearchAPI 失败:", e.message);
         return null;
     }
 }
 
-/**
- * 将 API 返回的单个视频对象转为 Forward Widget item
- */
-function mapVideoToItem(video) {
-    if (!video) return null;
-
-    // hanime1 API 字段可能有多种形态，兼容处理
-    const id = video.slug || video.id || String(video.name || "");
-    const title = video.name || video.title || "未知标题";
-    const cover = video.cover_url || video.poster_url || video.image || "";
-    const tags = (video.hentai_tags || []).map(t => t.text).join(" / ");
-    const views = video.views ? `${formatNumber(video.views)} 次观看` : "";
-    const likes = video.likes ? `👍 ${formatNumber(video.likes)}` : "";
-    const desc = [tags, views, likes].filter(Boolean).join(" · ");
-
-    return {
-        id: id,
-        type: "url",
-        title: title,
-        posterPath: cover,
-        backdropPath: cover,
-        description: desc,
-        link: `${BASE_URL}/watch/${id}`,
-        // 不直接给 videoUrl，播放时由 loadDetail 解析
-    };
-}
-
+// ========== 工具函数 ==========
 function formatNumber(n) {
     if (!n) return "0";
     if (n >= 10000) return (n / 10000).toFixed(1) + "万";
     return String(n);
 }
 
-/**
- * 通用分页列表解析
- * hanime1 API: https://hanime1.me/api/v8/
- */
-async function fetchListPage(endpoint, page) {
-    const pageIndex = (page || 1) - 1; // API 从 0 开始
-    const data = await fetchVideoList(`${BASE_URL}/api/v8/${endpoint}&page=${pageIndex}&limit=24`);
+function mapVideoToItem(video) {
+    if (!video) return null;
+    const slug = video.slug || String(video.id || "");
+    const title = video.name || video.title || "未知标题";
+    const cover = video.cover_url || video.poster_url || "";
+    const tags = (video.hentai_tags || []).map(t => t.text || t).join(" / ");
+    const views = video.views ? `${formatNumber(video.views)}次观看` : "";
+    const likes = video.likes ? `👍${formatNumber(video.likes)}` : "";
+    const desc = [tags, views, likes].filter(Boolean).join(" · ");
+
+    return {
+        id: slug,
+        type: "url",
+        title: title,
+        posterPath: cover,
+        backdropPath: cover,
+        description: desc,
+        link: `https://hanime1.me/watch/${slug}`,
+    };
+}
+
+// ========== 构造搜索请求体 ==========
+function buildSearchBody({ keyword = "", tags = [], orderBy = "published_at_unix", page = 1 }) {
+    return {
+        search_text: keyword,
+        tags: tags,
+        tags_mode: "AND",
+        brands: [],
+        blacklist: [],
+        order_by: orderBy,
+        ordering: "desc",
+        page: page - 1,   // API 从 0 开始
+    };
+}
+
+// ========== 通用列表加载 ==========
+async function loadListItems({ keyword = "", tags = [], orderBy = "published_at_unix", page = 1 }) {
+    const body = buildSearchBody({ keyword, tags, orderBy, page });
+    console.log("请求体:", JSON.stringify(body));
+    const data = await fetchSearchAPI(body);
     if (!data) return [];
-
-    // 兼容不同 API 返回结构
-    const hentaiVideos =
-        data.hentai_videos ||
-        data.hentai_video ||
-        data.data ||
-        [];
-
-    return hentaiVideos.map(mapVideoToItem).filter(Boolean);
+    const videos = data.hentai_videos || data.data || [];
+    console.log("获取到视频数量:", videos.length);
+    return videos.map(mapVideoToItem).filter(Boolean);
 }
 
 // ========== 各模块入口 ==========
 
-/**
- * 最新上架
- */
 async function loadLatestItems(params = {}) {
-    const page = params.page || 1;
-    return await fetchListPage("search?ordering=published_at_unix&where=&tags_1=&tags_2=&brands=&blacklist=&single_video=0&player_load=true", page);
+    return await loadListItems({
+        orderBy: "published_at_unix",
+        page: params.page || 1,
+    });
 }
 
-/**
- * 分类浏览
- */
 async function loadCategoryItems(params = {}) {
-    const genre = encodeURIComponent(params.genre || "裸體");
-    const page = params.page || 1;
-
-    const orderingMap = {
-        "最新": "published_at_unix",
-        "最多觀看": "views",
-        "最多喜歡": "likes",
-    };
-    const ordering = orderingMap[params.sort_by] || "published_at_unix";
-
-    return await fetchListPage(
-        `search?ordering=-${ordering}&where=&tags_1=${genre}&tags_2=&brands=&blacklist=&single_video=0&player_load=true`,
-        page
-    );
+    return await loadListItems({
+        tags: [params.genre || "裸體"],
+        orderBy: params.sort_by || "published_at_unix",
+        page: params.page || 1,
+    });
 }
 
-/**
- * 排行榜
- */
 async function loadRankItems(params = {}) {
-    const sort = params.sort_by || "views";
-    const page = params.page || 1;
-    return await fetchListPage(
-        `search?ordering=-${sort}&where=&tags_1=&tags_2=&brands=&blacklist=&single_video=0&player_load=true`,
-        page
-    );
+    return await loadListItems({
+        orderBy: params.sort_by || "views",
+        page: params.page || 1,
+    });
 }
 
-/**
- * 搜索
- */
 async function loadSearchItems(params = {}) {
-    const keyword = encodeURIComponent(params.keyword || "");
-    const page = params.page || 1;
+    const keyword = params.keyword || "";
     if (!keyword) return [];
-    return await fetchListPage(
-        `search?ordering=-published_at_unix&where=${keyword}&tags_1=&tags_2=&brands=&blacklist=&single_video=0&player_load=true`,
-        page
-    );
+    return await loadListItems({
+        keyword,
+        page: params.page || 1,
+    });
 }
 
 // ========== 播放详情解析 ==========
-
-/**
- * loadDetail: 由播放器在点击条目时调用，解析实际视频流 URL
- * link 格式: https://hanime1.me/watch/{slug}
- */
 async function loadDetail(link) {
-    console.log("loadDetail 链接:", link);
-
+    console.log("loadDetail:", link);
     try {
         const slug = link.split("/watch/")[1]?.split("?")[0];
         if (!slug) throw new Error("无法解析 slug: " + link);
 
-        // 调用 hanime1 视频详情 API
-        const apiUrl = `${BASE_URL}/api/v8/video?id=${slug}`;
-        const data = await fetchVideoList(apiUrl);
+        const apiUrl = `https://hanime1.me/api/v8/video?id=${slug}`;
+        const response = await Widget.http.get(apiUrl, { headers: buildHeaders() });
+        const data = (typeof response.data === "string")
+            ? JSON.parse(response.data)
+            : response.data;
 
-        if (!data || !data.videos_manifest) {
-            throw new Error("获取视频详情失败");
-        }
+        console.log("视频详情片段:", JSON.stringify(data).substring(0, 300));
 
-        // 从 manifest 中提取视频流
+        if (!data || !data.videos_manifest) throw new Error("获取视频详情失败");
+
         const servers = data.videos_manifest.servers || [];
         let videoUrl = null;
         let childItems = [];
 
-        // 遍历服务器找到可用的流
         for (const server of servers) {
-            const streams = server.streams || [];
+            const streams = (server.streams || [])
+                .filter(s => s.url && s.url.length > 4)
+                .sort((a, b) => (parseInt(b.height) || 0) - (parseInt(a.height) || 0));
+
             if (streams.length > 0) {
-                // 优先选最高分辨率
-                const sorted = streams
-                    .filter(s => s.url && s.url.length > 0)
-                    .sort((a, b) => (parseInt(b.height) || 0) - (parseInt(a.height) || 0));
-
-                if (sorted.length > 0) {
-                    videoUrl = sorted[0].url;
-
-                    // 如果有多个画质，作为子 items 供用户选择
-                    if (sorted.length > 1) {
-                        childItems = sorted.map(s => ({
-                            id: s.url,
-                            type: "url",
-                            title: `${s.height || "未知"}P - ${server.name || ""}`,
-                            link: s.url,
-                            videoUrl: s.url,
-                            playerType: "system",
-                        }));
-                    }
-                    break;
-                }
+                videoUrl = streams[0].url;
+                childItems = streams.map(s => ({
+                    id: s.url,
+                    type: "url",
+                    title: `${s.height || "?"}P  ${server.name || ""}`,
+                    link: s.url,
+                    videoUrl: s.url,
+                    playerType: "system",
+                }));
+                break;
             }
         }
 
-        if (!videoUrl) {
-            throw new Error("未找到可用的视频流");
-        }
-
-        console.log("解析到视频地址:", videoUrl);
+        if (!videoUrl) throw new Error("未找到视频流");
 
         return {
             id: link,
             type: "detail",
             videoUrl: videoUrl,
             customHeaders: {
-                "Referer": BASE_URL,
-                "User-Agent": DEFAULT_HEADERS["User-Agent"],
+                "Referer": "https://hanime1.me/",
+                "User-Agent": buildHeaders()["User-Agent"],
             },
             playerType: "system",
             childItems: childItems,
         };
     } catch (e) {
         console.error("loadDetail 失败:", e.message);
-        // 降级：尝试 WebView 方式
         return {
             id: link,
             type: "detail",
