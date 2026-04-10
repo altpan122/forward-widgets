@@ -13,15 +13,6 @@
       "url": "https://forward-widgets.pages.dev/widgets/jable.js"
     },
     {
-      "id": "missav",
-      "title": "MissAV",
-      "description": "简易的missav模块",
-      "requiredVersion": "0.0.1",
-      "version": "2.1.1",
-      "author": "𝙈𝙖𝙠𝙠𝙖𝙋𝙖𝙠𝙠𝙖",
-      "url": "https://forward-widgets.pages.dev/widgets/missav.js"
-    },
-    {
       "id": "Pornhub",
       "title": "Pornhub",
       "description": "網路收集到的模塊",
@@ -29,15 +20,6 @@
       "version": "1.1.5",
       "author": "海带",
       "url": "https://forward-widgets.pages.dev/widgets/pornhub.js"
-    },
-    {
-      "id": "xvideos",
-      "title": "XVideos",
-      "description": "網路收集到的模塊",
-      "requiredVersion": "0.0.1",
-      "version": "0.9.6",
-      "author": "網路",
-      "url": "https://forward-widgets.pages.dev/widgets/xvideos.js"
     }
   ]
 }
