@@ -5,13 +5,13 @@ WidgetMetadata = {
     globalParams: [
         {
             name: "cookie",
-            title: "Cookie（必填，用浏览器登录 hanime1.me 后从请求头中复制）",
+            title: "Cookie（必填）",
             type: "input",
-            description: "打开 hanime1.me → 按 F12 → Network → 任意请求 → Request Headers → 复制 cookie 字段的值",
+            description: "浏览器打开 hanime1.me → F12 → Network → 刷新页面 → 点任意请求 → Request Headers → 复制 cookie 整行的值",
             placeholders: [
                 {
                     title: "示例格式",
-                    value: "_ga=GA1.1.xxx; cf_clearance=xxx; SESSION=xxx",
+                    value: "cf_clearance=xxx; XSRF-TOKEN=xxx; hanime1_session=xxx",
                 },
             ],
         },
@@ -136,30 +136,36 @@ WidgetMetadata = {
             ],
         },
     ],
-    version: "1.0.2",
+    version: "1.0.3",
     requiredVersion: "0.0.1",
-    description: "解析 Hanime1 最新上架、分类浏览、排行榜、搜索功能（需要填入 Cookie）",
+    description: "解析 Hanime1 最新上架、分类浏览、排行榜、搜索功能（需填入 Cookie）",
     author: "community",
     site: "https://hanime1.me",
 };
 
-// ========== 请求头构造 ==========
+// ========== 与 cf_clearance 匹配的 UA（Mac + Chrome 147）==========
+const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36";
+
 function buildHeaders(cookie) {
-    const headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    const h = {
+        "User-Agent": UA,
         "Referer": "https://hanime1.me/",
         "Origin": "https://hanime1.me",
         "Accept": "application/json, text/plain, */*",
-        "Accept-Language": "zh-TW,zh;q=0.9,en;q=0.8",
+        "Accept-Language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Sec-Ch-Ua": '"Google Chrome";v="147", "Not.A/Brand";v="8", "Chromium";v="147"',
+        "Sec-Ch-Ua-Mobile": "?0",
+        "Sec-Ch-Ua-Platform": '"macOS"',
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin",
         "X-Requested-With": "XMLHttpRequest",
     };
-    if (cookie) {
-        headers["Cookie"] = cookie;
-    }
-    return headers;
+    if (cookie) h["Cookie"] = cookie;
+    return h;
 }
 
-// ========== 核心 POST 搜索 API ==========
+// ========== POST 搜索 API ==========
 async function fetchSearchAPI(body, cookie) {
     const url = "https://hanime1.me/api/v8/search-uncensored";
     try {
@@ -170,39 +176,10 @@ async function fetchSearchAPI(body, cookie) {
             },
         });
         console.log("POST 状态码:", response.statusCode);
-        const data = (typeof response.data === "string")
-            ? JSON.parse(response.data)
-            : response.data;
+        const data = typeof response.data === "string" ? JSON.parse(response.data) : response.data;
         return data;
     } catch (e) {
-        console.error("fetchSearchAPI 失败:", e.message);
-        // 尝试降级到 GET 接口
-        return await fetchSearchGET(body, cookie);
-    }
-}
-
-// ========== GET 降级接口 ==========
-async function fetchSearchGET(body, cookie) {
-    try {
-        const params = new URLSearchParams({
-            search_text: body.search_text || "",
-            tags: (body.tags || []).join(","),
-            order_by: body.order_by || "published_at_unix",
-            ordering: "desc",
-            page: String(body.page || 0),
-            limit: "24",
-        });
-        const url = `https://hanime1.me/api/v8/search?${params.toString()}`;
-        console.log("GET 降级请求:", url);
-        const response = await Widget.http.get(url, {
-            headers: buildHeaders(cookie),
-        });
-        console.log("GET 状态码:", response.statusCode);
-        return (typeof response.data === "string")
-            ? JSON.parse(response.data)
-            : response.data;
-    } catch (e) {
-        console.error("fetchSearchGET 失败:", e.message);
+        console.error("POST 失败:", e.message);
         return null;
     }
 }
@@ -216,6 +193,7 @@ function formatNumber(n) {
 
 function mapVideoToItem(video) {
     if (!video) return null;
+    // 网站实际用 ?v= 参数，slug 即视频 ID
     const slug = video.slug || String(video.id || "");
     if (!slug) return null;
     const title = video.name || video.title || "未知标题";
@@ -231,11 +209,12 @@ function mapVideoToItem(video) {
         posterPath: cover,
         backdropPath: cover,
         description: desc,
-        link: `https://hanime1.me/watch/${slug}`,
+        // 网站真实 URL 格式是 ?v=，不是 /watch/
+        link: `https://hanime1.me/watch?v=${slug}`,
     };
 }
 
-// ========== 构造搜索请求体 ==========
+// ========== 构造请求体 ==========
 function buildBody({ keyword = "", tags = [], orderBy = "published_at_unix", page = 1 }) {
     return {
         search_text: keyword,
@@ -245,7 +224,7 @@ function buildBody({ keyword = "", tags = [], orderBy = "published_at_unix", pag
         blacklist: [],
         order_by: orderBy,
         ordering: "desc",
-        page: page - 1,
+        page: page - 1,   // API 从 0 开始
     };
 }
 
@@ -301,21 +280,25 @@ async function loadSearchItems(params = {}) {
 async function loadDetail(link) {
     console.log("loadDetail:", link);
     try {
-        const slug = link.split("/watch/")[1]?.split("?")[0];
-        if (!slug) throw new Error("无法解析 slug: " + link);
+        // 兼容两种格式：?v=13457 和 /watch/slug
+        let videoId = null;
+        const vMatch = link.match(/[?&]v=([^&]+)/);
+        if (vMatch) {
+            videoId = vMatch[1];
+        } else {
+            const pathMatch = link.match(/\/watch\/([^?&]+)/);
+            if (pathMatch) videoId = pathMatch[1];
+        }
+        if (!videoId) throw new Error("无法解析视频 ID: " + link);
+        console.log("视频 ID:", videoId);
 
-        // 尝试从 globalParams 中获取 cookie（loadDetail 不接收 params，只能从缓存或其他方式获取）
-        const apiUrl = `https://hanime1.me/api/v8/video?id=${slug}`;
-        const response = await Widget.http.get(apiUrl, {
-            headers: buildHeaders(""),
-        });
-        const data = (typeof response.data === "string")
-            ? JSON.parse(response.data)
-            : response.data;
+        const apiUrl = `https://hanime1.me/api/v8/video?id=${videoId}`;
+        const response = await Widget.http.get(apiUrl, { headers: buildHeaders("") });
+        const data = typeof response.data === "string" ? JSON.parse(response.data) : response.data;
 
         console.log("视频详情片段:", JSON.stringify(data).substring(0, 500));
 
-        if (!data || !data.videos_manifest) throw new Error("获取视频详情失败");
+        if (!data || !data.videos_manifest) throw new Error("获取视频详情失败，状态码: " + response.statusCode);
 
         const servers = data.videos_manifest.servers || [];
         let videoUrl = null;
@@ -325,7 +308,6 @@ async function loadDetail(link) {
             const streams = (server.streams || [])
                 .filter(s => s.url && s.url.length > 4)
                 .sort((a, b) => (parseInt(b.height) || 0) - (parseInt(a.height) || 0));
-
             if (streams.length > 0) {
                 videoUrl = streams[0].url;
                 childItems = streams.map(s => ({
@@ -348,7 +330,7 @@ async function loadDetail(link) {
             videoUrl: videoUrl,
             customHeaders: {
                 "Referer": "https://hanime1.me/",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "User-Agent": UA,
             },
             playerType: "system",
             childItems: childItems,
