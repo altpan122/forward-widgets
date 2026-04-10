@@ -4,7 +4,7 @@
   "icon": "https://assets.vvebo.vip/scripts/icon.png",
   "widgets": [
     {
-      "id": "jable_int",
+      "id": "jable",
       "title": "Jable",
       "description": "修复声音&恢复大量分类",
       "requiredVersion": "0.0.2",
@@ -13,8 +13,8 @@
       "url": "https://forward-widgets.pages.dev/widgets/jable.js"
     },
     {
-      "id": "missav_makka_play",
-      "title": "MissAV_ovo",
+      "id": "missav",
+      "title": "MissAV",
       "description": "简易的missav模块",
       "requiredVersion": "0.0.1",
       "version": "2.1.1",
@@ -22,7 +22,7 @@
       "url": "https://forward-widgets.pages.dev/widgets/missavovo.js"
     },
     {
-      "id": "Pornhub_int",
+      "id": "Pornhub",
       "title": "Pornhub",
       "description": "網路收集到的模塊",
       "requiredVersion": "0.0.1",
@@ -31,7 +31,7 @@
       "url": "https://forward-widgets.pages.dev/widgets/pornhub_int.js"
     },
     {
-      "id": "xvideos_int",
+      "id": "xvideos",
       "title": "XVideos",
       "description": "網路收集到的模塊",
       "requiredVersion": "0.0.1",
