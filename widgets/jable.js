@@ -1,4 +1,3 @@
-//Original Author:nibiru
 WidgetMetadata = {
   id: "jable",
   title: "Jable",
