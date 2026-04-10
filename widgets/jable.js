@@ -1,6 +1,6 @@
 //Original Author:nibiru
 WidgetMetadata = {
-  id: "jable_int",
+  id: "jable",
   title: "Jable",
   description: "AI 优化增强版",
   author: "𝙨𝙣𝙤𝙡𝙞𝙜𝙝𝙩",
