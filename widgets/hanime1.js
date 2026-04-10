@@ -2,6 +2,20 @@
 WidgetMetadata = {
     id: "hanime1",
     title: "Hanime1(最新/分类/排行/搜索)",
+    globalParams: [
+        {
+            name: "cookie",
+            title: "Cookie（必填，用浏览器登录 hanime1.me 后从请求头中复制）",
+            type: "input",
+            description: "打开 hanime1.me → 按 F12 → Network → 任意请求 → Request Headers → 复制 cookie 字段的值",
+            placeholders: [
+                {
+                    title: "示例格式",
+                    value: "_ga=GA1.1.xxx; cf_clearance=xxx; SESSION=xxx",
+                },
+            ],
+        },
+    ],
     modules: [
         {
             id: "latest",
@@ -10,11 +24,7 @@ WidgetMetadata = {
             functionName: "loadLatestItems",
             cacheDuration: 3600,
             params: [
-                {
-                    name: "page",
-                    title: "页码",
-                    type: "page",
-                },
+                { name: "page", title: "页码", type: "page" },
             ],
         },
         {
@@ -81,11 +91,7 @@ WidgetMetadata = {
                         { title: "最多喜歡", value: "likes" },
                     ],
                 },
-                {
-                    name: "page",
-                    title: "页码",
-                    type: "page",
-                },
+                { name: "page", title: "页码", type: "page" },
             ],
         },
         {
@@ -109,11 +115,7 @@ WidgetMetadata = {
                         { title: "本月最多喜歡", value: "monthly_likes" },
                     ],
                 },
-                {
-                    name: "page",
-                    title: "页码",
-                    type: "page",
-                },
+                { name: "page", title: "页码", type: "page" },
             ],
         },
         {
@@ -128,29 +130,22 @@ WidgetMetadata = {
                     title: "关键词",
                     type: "input",
                     description: "输入搜索关键词",
-                    placeholders: [
-                        { title: "示例", value: "巨乳" },
-                    ],
+                    placeholders: [{ title: "示例", value: "巨乳" }],
                 },
-                {
-                    name: "page",
-                    title: "页码",
-                    type: "page",
-                },
+                { name: "page", title: "页码", type: "page" },
             ],
         },
     ],
-    version: "1.0.1",
+    version: "1.0.2",
     requiredVersion: "0.0.1",
-    description: "解析 Hanime1 最新上架、分类浏览、排行榜、搜索功能",
+    description: "解析 Hanime1 最新上架、分类浏览、排行榜、搜索功能（需要填入 Cookie）",
     author: "community",
     site: "https://hanime1.me",
 };
 
-// ========== 请求头 ==========
-// hanime1 的 JSON API 需要完整请求头，否则返回 403
-function buildHeaders() {
-    return {
+// ========== 请求头构造 ==========
+function buildHeaders(cookie) {
+    const headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Referer": "https://hanime1.me/",
         "Origin": "https://hanime1.me",
@@ -158,16 +153,19 @@ function buildHeaders() {
         "Accept-Language": "zh-TW,zh;q=0.9,en;q=0.8",
         "X-Requested-With": "XMLHttpRequest",
     };
+    if (cookie) {
+        headers["Cookie"] = cookie;
+    }
+    return headers;
 }
 
 // ========== 核心 POST 搜索 API ==========
-// 正确端点: POST https://hanime1.me/api/v8/search-uncensored
-async function fetchSearchAPI(body) {
+async function fetchSearchAPI(body, cookie) {
     const url = "https://hanime1.me/api/v8/search-uncensored";
     try {
         const response = await Widget.http.post(url, body, {
             headers: {
-                ...buildHeaders(),
+                ...buildHeaders(cookie),
                 "Content-Type": "application/json;charset=UTF-8",
             },
         });
@@ -178,6 +176,33 @@ async function fetchSearchAPI(body) {
         return data;
     } catch (e) {
         console.error("fetchSearchAPI 失败:", e.message);
+        // 尝试降级到 GET 接口
+        return await fetchSearchGET(body, cookie);
+    }
+}
+
+// ========== GET 降级接口 ==========
+async function fetchSearchGET(body, cookie) {
+    try {
+        const params = new URLSearchParams({
+            search_text: body.search_text || "",
+            tags: (body.tags || []).join(","),
+            order_by: body.order_by || "published_at_unix",
+            ordering: "desc",
+            page: String(body.page || 0),
+            limit: "24",
+        });
+        const url = `https://hanime1.me/api/v8/search?${params.toString()}`;
+        console.log("GET 降级请求:", url);
+        const response = await Widget.http.get(url, {
+            headers: buildHeaders(cookie),
+        });
+        console.log("GET 状态码:", response.statusCode);
+        return (typeof response.data === "string")
+            ? JSON.parse(response.data)
+            : response.data;
+    } catch (e) {
+        console.error("fetchSearchGET 失败:", e.message);
         return null;
     }
 }
@@ -192,13 +217,13 @@ function formatNumber(n) {
 function mapVideoToItem(video) {
     if (!video) return null;
     const slug = video.slug || String(video.id || "");
+    if (!slug) return null;
     const title = video.name || video.title || "未知标题";
     const cover = video.cover_url || video.poster_url || "";
     const tags = (video.hentai_tags || []).map(t => t.text || t).join(" / ");
     const views = video.views ? `${formatNumber(video.views)}次观看` : "";
     const likes = video.likes ? `👍${formatNumber(video.likes)}` : "";
     const desc = [tags, views, likes].filter(Boolean).join(" · ");
-
     return {
         id: slug,
         type: "url",
@@ -211,7 +236,7 @@ function mapVideoToItem(video) {
 }
 
 // ========== 构造搜索请求体 ==========
-function buildSearchBody({ keyword = "", tags = [], orderBy = "published_at_unix", page = 1 }) {
+function buildBody({ keyword = "", tags = [], orderBy = "published_at_unix", page = 1 }) {
     return {
         search_text: keyword,
         tags: tags,
@@ -220,15 +245,15 @@ function buildSearchBody({ keyword = "", tags = [], orderBy = "published_at_unix
         blacklist: [],
         order_by: orderBy,
         ordering: "desc",
-        page: page - 1,   // API 从 0 开始
+        page: page - 1,
     };
 }
 
 // ========== 通用列表加载 ==========
-async function loadListItems({ keyword = "", tags = [], orderBy = "published_at_unix", page = 1 }) {
-    const body = buildSearchBody({ keyword, tags, orderBy, page });
+async function loadList({ keyword = "", tags = [], orderBy = "published_at_unix", page = 1, cookie = "" }) {
+    const body = buildBody({ keyword, tags, orderBy, page });
     console.log("请求体:", JSON.stringify(body));
-    const data = await fetchSearchAPI(body);
+    const data = await fetchSearchAPI(body, cookie);
     if (!data) return [];
     const videos = data.hentai_videos || data.data || [];
     console.log("获取到视频数量:", videos.length);
@@ -238,33 +263,37 @@ async function loadListItems({ keyword = "", tags = [], orderBy = "published_at_
 // ========== 各模块入口 ==========
 
 async function loadLatestItems(params = {}) {
-    return await loadListItems({
+    return await loadList({
         orderBy: "published_at_unix",
         page: params.page || 1,
+        cookie: params.cookie || "",
     });
 }
 
 async function loadCategoryItems(params = {}) {
-    return await loadListItems({
+    return await loadList({
         tags: [params.genre || "裸體"],
         orderBy: params.sort_by || "published_at_unix",
         page: params.page || 1,
+        cookie: params.cookie || "",
     });
 }
 
 async function loadRankItems(params = {}) {
-    return await loadListItems({
+    return await loadList({
         orderBy: params.sort_by || "views",
         page: params.page || 1,
+        cookie: params.cookie || "",
     });
 }
 
 async function loadSearchItems(params = {}) {
     const keyword = params.keyword || "";
     if (!keyword) return [];
-    return await loadListItems({
+    return await loadList({
         keyword,
         page: params.page || 1,
+        cookie: params.cookie || "",
     });
 }
 
@@ -275,13 +304,16 @@ async function loadDetail(link) {
         const slug = link.split("/watch/")[1]?.split("?")[0];
         if (!slug) throw new Error("无法解析 slug: " + link);
 
+        // 尝试从 globalParams 中获取 cookie（loadDetail 不接收 params，只能从缓存或其他方式获取）
         const apiUrl = `https://hanime1.me/api/v8/video?id=${slug}`;
-        const response = await Widget.http.get(apiUrl, { headers: buildHeaders() });
+        const response = await Widget.http.get(apiUrl, {
+            headers: buildHeaders(""),
+        });
         const data = (typeof response.data === "string")
             ? JSON.parse(response.data)
             : response.data;
 
-        console.log("视频详情片段:", JSON.stringify(data).substring(0, 300));
+        console.log("视频详情片段:", JSON.stringify(data).substring(0, 500));
 
         if (!data || !data.videos_manifest) throw new Error("获取视频详情失败");
 
@@ -299,7 +331,7 @@ async function loadDetail(link) {
                 childItems = streams.map(s => ({
                     id: s.url,
                     type: "url",
-                    title: `${s.height || "?"}P  ${server.name || ""}`,
+                    title: `${s.height || "?"}P  ${server.name || ""}`.trim(),
                     link: s.url,
                     videoUrl: s.url,
                     playerType: "system",
@@ -316,7 +348,7 @@ async function loadDetail(link) {
             videoUrl: videoUrl,
             customHeaders: {
                 "Referer": "https://hanime1.me/",
-                "User-Agent": buildHeaders()["User-Agent"],
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             },
             playerType: "system",
             childItems: childItems,
