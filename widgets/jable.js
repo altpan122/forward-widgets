@@ -3,7 +3,7 @@ WidgetMetadata = {
   title: "Jable",
   description: "AI 优化增强版",
   author: "𝙨𝙣𝙤𝙡𝙞𝙜𝙝𝙩",
-  site: "https://www.google.com",
+  site: "https://forward-widgets.pages.dev/widgets/jable.js",
   version: "1.3.2",
   requiredVersion: "0.0.2",
   detailCacheDuration: 60,
