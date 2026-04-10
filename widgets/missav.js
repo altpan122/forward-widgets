@@ -1,9 +1,9 @@
-const WidgetMetadata = {
+WidgetMetadata = {
     id: "missav",
     title: "MissAV",
     author: "𝙨𝙣𝙤𝙡𝙞𝙜𝙝𝙩",
-    description: "增强稳定版（双环境兼容）",
-    version: "3.1.0",
+    description: "简易的missav模块",
+    version: "2.1.1",
     requiredVersion: "0.0.1",
     site: "https://missav.ai",
     modules: [
@@ -12,199 +12,187 @@ const WidgetMetadata = {
             functionName: "loadList",
             type: "video",
             params: [
-                { name: "page", type: "page" },
-                {
-                    name: "category",
-                    type: "enumeration",
-                    value: "dm588/cn/release",
+                { name: "page", title: "页码", type: "page" },
+                { 
+                    name: "category", 
+                    title: "分类", 
+                    type: "enumeration", 
+                    value: "dm588/cn/release", // 修正默认值匹配列表
                     enumOptions: [
-                        { title: "🆕 最新", value: "dm588/cn/release" },
-                        { title: "🔥 周热门", value: "dm169/cn/weekly-hot" },
-                        { title: "🌟 月热门", value: "dm257/cn/monthly-hot" }
+                        { title: "🆕 最新发布", value: "dm588/cn/release" },
+                        { title: "🔥 本周热门", value: "dm169/cn/weekly-hot" },
+                        { title: "🌟 月度热门", value: "dm257/cn/monthly-hot" },
+                        { title: "🔞 无码流出", value: "dm621/cn/uncensored-leak" },
+                        { title: "🇯🇵 东京热", value: "dm29/cn/tokyohot" },
+                        { title: "🇨🇳 中文字幕", value: "dm265/cn/chinese-subtitle" }
+                    ] 
+                },
+                {
+                    name: "sort",
+                    title: "排序",
+                    type: "enumeration",
+                    value: "released_at",
+                    enumOptions: [
+                        { title: "发布日期", value: "released_at" },
+                        { title: "今日浏览", value: "today_views" },
+                        { title: "总浏览量", value: "views" },
+                        { title: "收藏数", value: "saved" }
                     ]
                 }
             ]
         },
+        // --- 新增搜索模块 ---
         {
-            title: "🔍 搜索",
+            title: "🔍 搜索视频",
             functionName: "searchList",
             type: "video",
             params: [
-                { name: "keyword", type: "input" },
-                { name: "page", type: "page" }
+                { name: "keyword", title: "关键词", type: "input", value: "" },
+                { name: "page", title: "页码", type: "page" }
             ]
         }
     ]
 };
 
-// ================== 基础配置 ==================
 const BASE_URL = "https://missav.ai";
-
 const HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
     "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-    "Referer": BASE_URL,
-    "Origin": BASE_URL
+    "Referer": "https://missav.ai/",
+    "Connection": "keep-alive"
 };
 
-// ================== 环境适配 ==================
-function getWidgetSafe() {
-    if (typeof Widget === "undefined") {
-        return null; // Node 环境
-    }
-    return Widget;
-}
-
-// ================== 安全请求 ==================
-async function safeGet(url, retry = 2) {
-    const W = getWidgetSafe();
-    if (!W) {
-        throw new Error("当前为 Node 环境，无法发起请求");
+// --- 公共解析逻辑 (提取出来供浏览和搜索共用) ---
+function parseVideoList(html) {
+    if (!html || html.includes("Just a moment")) {
+        return [{ id: "err_cf", type: "text", title: "被 Cloudflare 拦截", subTitle: "请稍后重试" }];
     }
 
-    try {
-        return await W.http.get(url, { headers: HEADERS });
-    } catch (e) {
-        if (retry > 0) return await safeGet(url, retry - 1);
-        throw e;
-    }
-}
-
-function isCloudflare(html) {
-    return html && (html.includes("Just a moment") || html.includes("cf-browser-verification"));
-}
-
-// ================== 列表解析 ==================
-function parseList(html) {
-    const W = getWidgetSafe();
-    if (!W) return [];
-
-    if (!html || isCloudflare(html)) {
-        return [{ id: "cf", type: "text", title: "被 Cloudflare 拦截" }];
-    }
-
-    const $ = W.html.load(html);
-    const list = [];
+    const $ = Widget.html.load(html);
+    const results = [];
 
     $("div.group").each((i, el) => {
-        const a = $(el).find("a.text-secondary");
-        const href = a.attr("href");
+        const $el = $(el);
+        const $link = $el.find("a.text-secondary");
+        const href = $link.attr("href");
+        
+        if (href) {
+            const title = $link.text().trim();
+            const $img = $el.find("img");
+            const imgSrc = $img.attr("data-src") || $img.attr("src");
+            const duration = $el.find(".absolute.bottom-1.right-1").text().trim();
 
-        if (!href) return;
+            const videoId = href.split('/').pop().replace(/-uncensored-leak|-chinese-subtitle/g, '').toUpperCase();
+            // 尝试构建高清封面
+            const coverUrl = `https://fourhoi.com/${videoId.toLowerCase()}/cover-t.jpg`;
 
-        const title = a.text().trim();
-        const img = $(el).find("img").attr("data-src") || $(el).find("img").attr("src");
-
-        const vid = href.split("/").pop().replace(/-.+$/, "");
-
-        list.push({
-            id: href,
-            type: "link",
-            title,
-            link: href,
-            coverUrl: img || `https://fourhoi.com/${vid}/cover-t.jpg`,
-            customHeaders: HEADERS
-        });
+            results.push({
+                id: href,
+                type: "link", 
+                title: title,
+                coverUrl: coverUrl || imgSrc, 
+                link: href,
+                description: `时长: ${duration} | 番号: ${videoId}`,
+                customHeaders: HEADERS
+            });
+        }
     });
 
-    return list.length ? list : [{ id: "empty", type: "text", title: "无数据" }];
+    return results.length > 0 ? results : [{ id: "empty", type: "text", title: "没有找到相关视频" }];
 }
 
-// ================== 浏览 ==================
+// 1. 浏览列表
 async function loadList(params = {}) {
-    const W = getWidgetSafe();
-    if (!W) return [];
+    const { page = 1, category = "dm588/cn/release", sort = "released_at" } = params;
+    
+    let url = `${BASE_URL}/${category}?sort=${sort}`;
+    if (page > 1) url += `&page=${page}`;
 
-    const { page = 1, category = "dm588/cn/release" } = params;
-
-    let url = `${BASE_URL}/${category}`;
-    if (page > 1) url += `?page=${page}`;
-
-    const res = await safeGet(url);
-    return parseList(res.data);
+    try {
+        const res = await Widget.http.get(url, { headers: HEADERS });
+        return parseVideoList(res.data);
+    } catch (e) {
+        return [{ id: "err", type: "text", title: "加载失败", subTitle: e.message }];
+    }
 }
 
-// ================== 搜索 ==================
+// 2. 搜索功能 (新增)
 async function searchList(params = {}) {
-    const W = getWidgetSafe();
-    if (!W) return [];
-
-    const { keyword, page = 1 } = params;
-
+    const { page = 1, keyword } = params;
+    
     if (!keyword) {
-        return [{ id: "tip", type: "text", title: "请输入关键词" }];
+        return [{ id: "tip", type: "text", title: "请输入关键词开始搜索" }];
     }
 
+    // 构建搜索 URL: https://missav.ai/cn/search/KEYWORD?page=N
     let url = `${BASE_URL}/cn/search/${encodeURIComponent(keyword)}`;
     if (page > 1) url += `?page=${page}`;
 
-    const res = await safeGet(url);
-    return parseList(res.data);
-}
-
-// ================== 播放解析 ==================
-async function loadDetail(link) {
-    const W = getWidgetSafe();
-    if (!W) return [];
-
     try {
-        const res = await safeGet(link);
-        const html = res.data;
-
-        if (isCloudflare(html)) {
-            return [{ id: "cf", type: "text", title: "播放页被拦截" }];
-        }
-
-        let videoUrl = "";
-
-        // 策略1
-        const m3u8 = html.match(/https:\/\/[^"]+\.m3u8[^"]*/);
-        if (m3u8) videoUrl = m3u8[0];
-
-        // 策略2
-        if (!videoUrl) {
-            const uuid = html.match(/[a-f0-9\-]{36}/);
-            if (uuid) {
-                videoUrl = `https://surrit.com/${uuid[0]}/playlist.m3u8`;
-            }
-        }
-
-        // 策略3
-        if (!videoUrl) {
-            const src = html.match(/source\s*=\s*['"]([^'"]+)/);
-            if (src) videoUrl = src[1];
-        }
-
-        if (!videoUrl) {
-            return [{ id: "err", type: "text", title: "解析失败" }];
-        }
-
-        return [{
-            id: link,
-            type: "video",
-            title: "播放",
-            videoUrl,
-            playerType: "system",
-            customHeaders: HEADERS
-        }];
-
+        const res = await Widget.http.get(url, { headers: HEADERS });
+        return parseVideoList(res.data);
     } catch (e) {
-        return [{ id: "err", type: "text", title: "播放失败", subTitle: e.message }];
+        return [{ id: "err", type: "text", title: "搜索失败", subTitle: e.message }];
     }
 }
 
-// ================== 导出 ==================
-const api = {
-    WidgetMetadata,
-    loadList,
-    searchList,
-    loadDetail
-};
+// 3. 详情解析 (保持原样，供可能的二级调用)
+async function loadDetail(link) {
+    try {
+        const res = await Widget.http.get(link, { headers: HEADERS });
+        const html = res.data;
+        const $ = Widget.html.load(html);
+        
+        let title = $('meta[property="og:title"]').attr('content') || $('h1').text().trim();
+        
+        let videoUrl = "";
+        
+        $('script').each((i, el) => {
+            const scriptContent = $(el).html() || "";
+            
+            // 1. surrit 直连
+            if (scriptContent.includes('surrit.com') && scriptContent.includes('.m3u8')) {
+                const matches = scriptContent.match(/https:\/\/surrit\.com\/[a-f0-9\-]+\/[^"'\s]*\.m3u8/g);
+                if (matches && matches.length > 0) {
+                    videoUrl = matches[0];
+                    return false; 
+                }
+            }
+            
+            // 2. eval 混淆
+            if (!videoUrl && scriptContent.includes('eval(function')) {
+                const uuidMatches = scriptContent.match(/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/g);
+                if (uuidMatches && uuidMatches.length > 0) {
+                    videoUrl = `https://surrit.com/${uuidMatches[0]}/playlist.m3u8`;
+                    return false; 
+                }
+            }
+        });
 
-// ESM
-export default api;
+        if (!videoUrl) {
+            const matchSimple = html.match(/source\s*=\s*['"]([^'"]+)['"]/);
+            if (matchSimple) videoUrl = matchSimple[1];
+        }
 
-// CommonJS
-if (typeof module !== "undefined") {
-    module.exports = api;
+        if (videoUrl) {
+            return [{
+                id: link,
+                type: "video",
+                title: title,
+                videoUrl: videoUrl,
+                playerType: "system",
+                customHeaders: {
+                    "Referer": "https://missav.ai/",
+                    "User-Agent": HEADERS["User-Agent"],
+                    "Origin": "https://missav.ai"
+                }
+            }];
+        } else {
+            return [{ id: "err", type: "text", title: "解析失败", subTitle: "未找到播放地址" }];
+        }
+
+    } catch (e) {
+        return [{ id: "err", type: "text", title: "请求错误", subTitle: e.message }];
+    }
 }
