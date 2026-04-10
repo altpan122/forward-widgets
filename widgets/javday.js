@@ -1,5 +1,5 @@
 var WidgetMetadata = {
-  id: "javday_int",
+  id: "javday",
   title: "JAVDay",
   description: "網路收集到的模塊",
   author: "Ti",
